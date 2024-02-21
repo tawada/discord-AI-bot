@@ -1,9 +1,12 @@
 import dataclasses
+import logging
 import os
 import sys
 
 import discord
 import openai
+
+import summarizer
 
 
 @dataclasses.dataclass
@@ -25,6 +28,9 @@ client = discord.Client(intents=intents)
 
 roleplay = os.environ["ROLE_PROMPT"]
 role_bot_name = os.environ["ROLE_NAME"]
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -67,8 +73,8 @@ async def get_reply_message(message):
         )
         bot_reply_message = response.choices[0].message.content
         bot_reply_message = bot_reply_message.replace(role_bot_name + ":", "").strip()
-    except Exception as e:
-        print(e, file=sys.stderr)
+    except Exception as err:
+        logger.exception(err)
         bot_reply_message = "Error: OpenAI API failed"
     history.add(GPTMessage("user", user_name + ':\n' + user_message))
     history.add(GPTMessage("assistant", role_bot_name + ':\n' + bot_reply_message))
@@ -77,7 +83,7 @@ async def get_reply_message(message):
 
 @client.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
+    logger.info('We have logged in as {0.user}'.format(client))
 
 
 @client.event
@@ -86,16 +92,27 @@ async def on_message(message):
         # ボット以外
         return
 
-    print(f"channel_id:{message.channel.id}")
-    print(f"name:{message.author.name}")
-    print(f"message:{message.content[:50]}")
+    logger.info(f"channel_id:{message.channel.id}")
+    logger.info(f"name:{message.author.name}")
+    logger.info(f"message:{message.content[:50]}")
 
     if message.channel.id not in config.target_channnel_ids:
-        print("not target channel")
+        logger.info("not target channel")
         return
 
-    if message.content.startswith('http'):
-        return
+    if "http" in message.content:
+        # URLが含まれている場合は、そのページを要約する
+        idx_s = message.content.find("http")
+        idx_e = message.content.find("\n", idx_s)
+        if idx_e == -1:
+            idx_e = len(message.content)
+        url = message.content[idx_s:idx_e + 1]
+        try:
+            summarized_text = summarizer.summarize_webpage(url, openai_client)
+            logger.info(summarized_text[:50])
+            message.content = message.content[:idx_e] + f"({summarized_text})" + message.content[idx_e:]
+        except RuntimeError:
+            pass
 
     if not message.content:
         return
