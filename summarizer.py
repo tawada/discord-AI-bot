@@ -12,6 +12,13 @@ def summarize_webpage(url, openai_client):
     html = response.text
     logger.debug(html[:50])
 
+    if url.startswith("https://youtube.com/"):
+        idx_s = html.find("<title>")
+        idx_e = html.find("</title>")
+        title = html[idx_s + 7:idx_e]
+        logger.debug(f"Title: {title}")
+        return title
+
     messages = [
         {"role": "user", "content": html},
         {"role": "system", "content": "Summarize the webpage."},
