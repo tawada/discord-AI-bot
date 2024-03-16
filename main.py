@@ -15,10 +15,11 @@ class Config:
     openai_api_key: str
     target_channnel_ids: list[int]
 
+
 config = Config(
     discord_api_key=os.environ["DISCORD_API_KEY"],
     openai_api_key=os.environ["OPENAI_API_KEY"],
-    target_channnel_ids = list(map(int, os.environ["CHANNEL_IDS"].split(","))),
+    target_channnel_ids=list(map(int, os.environ["CHANNEL_IDS"].split(","))),
 )
 
 openai_client = openai.OpenAI(api_key=config.openai_api_key)
@@ -49,7 +50,7 @@ class History:
 
     def get_messages(self):
         return [
-            dataclasses.asdict(message) for message in self.messages[-self.num_output:]
+            dataclasses.asdict(message) for message in self.messages[-self.num_output :]
         ]
 
 
@@ -64,8 +65,8 @@ async def get_reply_message(message):
     messages = history.get_messages()
 
     messages.append({"role": "system", "content": roleplay})
-    messages.append({"role": "user", "content": user_name + ':\n' + user_message})
-    messages.append({"role": "assistant", "content": role_bot_name + ':\n'})
+    messages.append({"role": "user", "content": user_name + ":\n" + user_message})
+    messages.append({"role": "assistant", "content": role_bot_name + ":\n"})
     try:
         response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -76,14 +77,14 @@ async def get_reply_message(message):
     except Exception as err:
         logger.exception(err)
         bot_reply_message = "Error: OpenAI API failed"
-    history.add(GPTMessage("user", user_name + ':\n' + user_message))
-    history.add(GPTMessage("assistant", role_bot_name + ':\n' + bot_reply_message))
+    history.add(GPTMessage("user", user_name + ":\n" + user_message))
+    history.add(GPTMessage("assistant", role_bot_name + ":\n" + bot_reply_message))
     return bot_reply_message
 
 
 @client.event
 async def on_ready():
-    logger.info('We have logged in as {0.user}'.format(client))
+    logger.info("We have logged in as {0.user}".format(client))
 
 
 @client.event
@@ -106,11 +107,15 @@ async def on_message(message):
         idx_e = message.content.find("\n", idx_s)
         if idx_e == -1:
             idx_e = len(message.content)
-        url = message.content[idx_s:idx_e + 1]
+        url = message.content[idx_s : idx_e + 1]
         try:
             summarized_text = summarizer.summarize_webpage(url, openai_client)
             logger.info(summarized_text[:50])
-            message.content = message.content[:idx_e] + f"({summarized_text})" + message.content[idx_e:]
+            message.content = (
+                message.content[:idx_e]
+                + f"({summarized_text})"
+                + message.content[idx_e:]
+            )
         except RuntimeError:
             pass
 
