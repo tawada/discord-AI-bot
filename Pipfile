@@ -12,6 +12,8 @@ requests = "*"
 isort = "*"
 black = "*"
 flake8 = "*"
+pytest = "*"
+pytest-mock = "*"
 
 [requires]
 python_version = "3.11"

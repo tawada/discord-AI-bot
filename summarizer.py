@@ -12,12 +12,15 @@ def summarize_webpage(url, openai_client):
     html = response.text
     logger.debug(html[:50])
 
-    if url.startswith("https://youtube.com/"):
+    if url.startswith("https://youtube.com/") or url.startswith("https://www.youtube.com/"):
         idx_s = html.find("<title>")
         idx_e = html.find("</title>")
         title = html[idx_s + 7:idx_e]
         logger.debug(f"Title: {title}")
         return title
+
+    # Limit the length of the HTML to 4096 characters
+    html = html[:4096]
 
     messages = [
         {"role": "user", "content": html},
