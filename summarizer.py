@@ -51,3 +51,28 @@ def summarize_youtube(url, openai_client):
     title = html[idx_s + 7: idx_e]
     logger.debug(f"Title: {title}")
     return "This youtube video is " + title
+
+
+def summarize_image(url, openai_client):
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Summarize the image."},
+                {"type": "image_url", "image_url": {"url": url}},
+            ]
+        },
+    ]
+    try:
+        summarized_text = (
+            openai_client.chat.completions.create(
+                model="gpt-4-turbo",
+                messages=messages,
+            )
+            .choices[0]
+            .message.content
+        )
+    except RuntimeError as err:
+        logger.exception(err)
+        raise
+    return summarized_text

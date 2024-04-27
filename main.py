@@ -56,7 +56,7 @@ class History:
 history = History()
 
 
-async def get_reply_message(message):
+async def get_reply_message(message, optional_messages=[]):
     """ユーザーのメッセージに対して、GPTによる返信を取得する"""
     user_message = message.content
     user_name = message.author.name
@@ -65,6 +65,8 @@ async def get_reply_message(message):
 
     messages.append({"role": "system", "content": roleplay})
     messages.append({"role": "user", "content": user_name + ":\n" + user_message})
+    if optional_messages:
+        messages.extend(optional_messages)
     messages.append({"role": "assistant", "content": role_bot_name + ":\n"})
     try:
         response = openai_client.chat.completions.create(
@@ -78,6 +80,8 @@ async def get_reply_message(message):
         bot_reply_message = "Error: OpenAI API failed"
     history.add(GPTMessage("user", user_name + ":\n" + user_message))
     history.add(GPTMessage("assistant", role_bot_name + ":\n" + bot_reply_message))
+    for optional_message in optional_messages:
+        history.add(GPTMessage(optional_message["role"], optional_message["content"]))
     return bot_reply_message
 
 
@@ -100,6 +104,23 @@ async def on_message(message):
         logger.info("not target channel")
         return
 
+    optional_messages = []
+
+    if message.attachments:
+        # 添付ファイルがある場合は、そのファイルを要約する
+        for attachment in message.attachments:
+            # 画像の場合は、その画像を要約する
+            if not attachment.filename.endswith((".png", ".jpg", ".jpeg")) and not attachment.url.endswith((".png", ".jpg", ".jpeg")):
+                continue
+            try:
+                summarized_text = summarizer.summarize_image(attachment.url, openai_client)
+                logger.info(summarized_text[:50])
+                optional_messages.append(
+                    {"role": "system", "content": "画像の要約:\n" + attachment.filename + "\n" + summarized_text}
+                )
+            except RuntimeError:
+                pass
+
     if "http" in message.content:
         # URLが含まれている場合は、そのページを要約する
         idx_s = message.content.find("http")
@@ -110,19 +131,20 @@ async def on_message(message):
         try:
             summarized_text = summarizer.summarize_webpage(url, openai_client)
             logger.info(summarized_text[:50])
-            message.content = "{}({}){}".format(
-                message.content[:idx_e],
-                summarized_text,
-                message.content[idx_e:],
+            optional_messages.append(
+                {
+                    "role": "system",
+                    "content": "ページの要約:\n" + url + "\n" + summarized_text,
+                }
             )
         except RuntimeError:
             pass
 
-    if not message.content:
+    if not message.content and not optional_messages:
         return
 
     async with message.channel.typing():
-        bot_reply_message = await get_reply_message(message)
+        bot_reply_message = await get_reply_message(message, optional_messages)
 
     await send_messages(message.channel, bot_reply_message)
 
