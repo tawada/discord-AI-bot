@@ -48,6 +48,6 @@ def summarize_youtube(url, openai_client):
 
     idx_s = html.find("<title>")
     idx_e = html.find("</title>")
-    title = html[idx_s + 7 : idx_e]
+    title = html[idx_s + 7: idx_e]
     logger.debug(f"Title: {title}")
     return "This youtube video is " + title

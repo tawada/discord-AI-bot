@@ -1,7 +1,6 @@
 import dataclasses
 import logging
 import os
-import sys
 
 import discord
 import openai
@@ -50,7 +49,7 @@ class History:
 
     def get_messages(self):
         return [
-            dataclasses.asdict(message) for message in self.messages[-self.num_output :]
+            dataclasses.asdict(message) for message in self.messages[-self.num_output:]
         ]
 
 
@@ -107,14 +106,14 @@ async def on_message(message):
         idx_e = message.content.find("\n", idx_s)
         if idx_e == -1:
             idx_e = len(message.content)
-        url = message.content[idx_s : idx_e + 1]
+        url = message.content[idx_s: idx_e + 1]
         try:
             summarized_text = summarizer.summarize_webpage(url, openai_client)
             logger.info(summarized_text[:50])
-            message.content = (
-                message.content[:idx_e]
-                + f"({summarized_text})"
-                + message.content[idx_e:]
+            message.content = "{}({}){}".format(
+                message.content[:idx_e],
+                summarized_text,
+                message.content[idx_e:],
             )
         except RuntimeError:
             pass
