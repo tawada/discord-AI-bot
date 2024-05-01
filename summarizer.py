@@ -76,11 +76,11 @@ def summarize_x(url, openai_client):
             continue
         # propertyがog:titleならタイトル
         if meta.get("property") == "og:title":
-            summarized_text += meta + "\n"
+            summarized_text += str(meta) + "\n"
             continue
         # propertyがog:descriptionなら説明文
         if meta.get("property") == "og:description":
-            summarized_text += meta + "\n"
+            summarized_text += str(meta) + "\n"
             continue
         logger.debug(meta.get("content"))
     return "This is a summary of the webpage: " + summarized_text
