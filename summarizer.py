@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 def summarize_webpage(url, openai_client):
     """"""
-    if "youtube.com" in url:
+    if "youtube.com" in url or "youtu.be" in url:
         return summarize_youtube(url, openai_client)
 
     if "x.com" in url or "twitter.com" in url:
