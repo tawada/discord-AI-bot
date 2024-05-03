@@ -79,9 +79,9 @@ async def get_reply_message(message, optional_messages=[]):
         logger.exception(err)
         bot_reply_message = "Error: OpenAI API failed"
     history.add(GPTMessage("user", user_name + ":\n" + user_message))
-    history.add(GPTMessage("assistant", role_bot_name + ":\n" + bot_reply_message))
     for optional_message in optional_messages:
         history.add(GPTMessage(optional_message["role"], optional_message["content"]))
+    history.add(GPTMessage("assistant", role_bot_name + ":\n" + bot_reply_message))
     return bot_reply_message
 
 
