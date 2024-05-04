@@ -70,21 +70,25 @@ def summarize_x(url, openai_client):
 
 
 def summarize_from_meta_tags(meta_tags, openai_client):
+    """Summarize the webpage from meta tags."""
+    # メタタグのプロパティごとに処理を分ける
+    property_handlers = {
+        "og:image": lambda meta: summarize_image(meta.get("content"), openai_client),
+        "og:title": lambda meta: str(meta),
+        "og:description": lambda meta: str(meta),
+    }
+
     summarized_text = ""
     for meta in meta_tags:
-        # propertyがog:imageなら画像なのでsummarize_image
-        if meta.get("property") == "og:image":
-            summarized_text += summarize_image(meta.get("content"), openai_client) + "\n"
+        logger.debug(meta)
+        # propertyがない場合はスキップ
+        if not meta.get("property"):
             continue
-        # propertyがog:titleならタイトル
-        if meta.get("property") == "og:title":
-            summarized_text += str(meta) + "\n"
+        # ハンドラがあれば実行
+        handler = property_handlers.get(meta.get("property"))
+        if handler:
+            summarized_text += handler(meta) + "\n"
             continue
-        # propertyがog:descriptionなら説明文
-        if meta.get("property") == "og:description":
-            summarized_text += str(meta) + "\n"
-            continue
-        logger.debug(meta.get("content"))
     return "This is a summary of the webpage: " + summarized_text
 
 
