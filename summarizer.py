@@ -65,11 +65,13 @@ def summarize_x(url, openai_client):
     logger.debug(html[:50])
 
     soup = BeautifulSoup(html, "html.parser")
+    meta_tags = soup.find_all("meta")
+    return summarize_from_meta_tags(meta_tags, openai_client)
 
+
+def summarize_from_meta_tags(meta_tags, openai_client):
     summarized_text = ""
-
-    # metaタグを列挙
-    for meta in soup.find_all("meta"):
+    for meta in meta_tags:
         # propertyがog:imageなら画像なのでsummarize_image
         if meta.get("property") == "og:image":
             summarized_text += summarize_image(meta.get("content"), openai_client) + "\n"
