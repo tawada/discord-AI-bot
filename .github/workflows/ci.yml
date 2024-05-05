@@ -27,4 +27,18 @@ jobs:
       uses: codecov/codecov-action@v4.0.1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        slug: tawada/discord-AI-bot
+    - name: Download Code Climate test reporter
+      run: |
+        curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+        chmod +x ./cc-test-reporter
+    - name: Before build
+      run: |
+        ./cc-test-reporter before-build
+    - name: After build
+      if: ${{ always() }}
+      run: |
+        EXIT_STATUS=0  # デフォルトを成功（0）に設定
+        if [ "${{ job.status }}" != "success" ]; then
+          EXIT_STATUS=1  # 失敗した場合は1に設定
+        fi
+        ./cc-test-reporter after-build --exit-code $EXIT_STATUS --id ${{ secrets.CC_TEST_REPORTER_ID }} --coverage-input-type coverage.py

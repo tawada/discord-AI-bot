@@ -16,6 +16,7 @@ flake8 = "*"
 pytest = "*"
 pytest-mock = "*"
 pytest-cov = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.11"
@@ -24,4 +25,4 @@ python_version = "3.11"
 format = "isort --profile black . && black ."
 lint = "flake8"
 run = "python main.py"
-test = "python -m pytest --cov=./ --cov-report=xml"
+test = "coverage run -m pytest --cov=./ --cov-report=xml"
