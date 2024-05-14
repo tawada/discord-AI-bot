@@ -70,7 +70,7 @@ async def get_reply_message(message, optional_messages=[]):
     messages.append({"role": "assistant", "content": role_bot_name + ":\n"})
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-4-turbo",
+            model="gpt-4o",
             messages=messages,
         )
         bot_reply_message = response.choices[0].message.content

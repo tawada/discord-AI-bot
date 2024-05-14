@@ -105,7 +105,7 @@ def summarize_image(url, openai_client):
     try:
         summarized_text = (
             openai_client.chat.completions.create(
-                model="gpt-4-turbo",
+                model="gpt-4o",
                 messages=messages,
             )
             .choices[0]
