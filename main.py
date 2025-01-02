@@ -4,6 +4,7 @@ import os
 
 import discord
 import openai  # ライブラリ名はこのまま利用し、base_url で Gemini を叩く
+
 import summarizer
 
 
@@ -11,19 +12,21 @@ import summarizer
 class Config:
     discord_api_key: str
     openai_api_key: str
+    gemini_api_key: str
     target_channnel_ids: list[int]
 
 
 config = Config(
     discord_api_key=os.environ["DISCORD_API_KEY"],
     openai_api_key=os.environ["OPENAI_API_KEY"],  # こちらは画像認識用 OpenAI API キー
+    gemini_api_key=os.environ["GEMINI_API_KEY"],
     target_channnel_ids=list(map(int, os.environ["CHANNEL_IDS"].split(","))),
 )
 
 # --- ここで 2 種類のクライアントを用意 ---
 # Gemini 側クライアント: テキスト生成などはこちらを使う
 gemini_client = openai.OpenAI(
-    api_key=os.environ["GEMINI_API_KEY"],
+    api_key=config.gemini_api_key,
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
@@ -151,7 +154,7 @@ async def on_message(message):
             idx_e = len(message.content)
         url = message.content[idx_s: idx_e]
         try:
-            summarized_text = summarizer.summarize_webpage(url, gemini_client)
+            summarized_text = summarizer.summarize_webpage(url, gemini_client, openai_client)
             logger.info(summarized_text[:50])
             optional_messages.append(
                 {
