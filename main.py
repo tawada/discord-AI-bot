@@ -6,10 +6,8 @@ import discord
 import openai  # ライブラリ名はこのまま利用し、base_url で Gemini を叩く
 
 import summarizer
-from config import config
 from ai_client import ai_client
-
-
+from config import config
 
 intents = discord.Intents.default()
 intents.message_content = True

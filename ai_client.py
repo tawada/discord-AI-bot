@@ -1,6 +1,10 @@
+import logging
+
 import openai
 
 from config import config
+
+logger = logging.getLogger(__name__)
 
 gemini_client = openai.OpenAI(
     api_key=config.gemini_api_key,
@@ -34,6 +38,13 @@ class HybridAIClient:
                 messages=messages,
             )
         else:
+            try:
+                return self.gemini_client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                )
+            except Exception as e:
+                logger.error(f"gemini_client.chat.completions.create error: {e}")
             return self.openai_client.chat.completions.create(
                 # Gemini がうまくいかないので一旦gpt-4oにしている
                 model=self.openai_models[0],
