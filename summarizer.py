@@ -6,13 +6,13 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 
-def summarize_webpage(url, gemini_client, openai_client):
+def summarize_webpage(url, ai_client):
     """Gemini クライアントでウェブページを要約。YouTube や X (twitter) は別関数へ。"""
     if "youtube.com" in url or "youtu.be" in url:
         return summarize_youtube(url)
 
     if "x.com" in url or "twitter.com" in url:
-        return summarize_x(url, openai_client)
+        return summarize_x(url, ai_client)
 
     # 通常のウェブページ
     response = requests.get(
@@ -39,7 +39,7 @@ def summarize_webpage(url, gemini_client, openai_client):
     ]
     try:
         summarized_text = (
-            gemini_client.chat.completions.create(
+            ai_client.chat.completions.create(
                 model="gemini-1.5-flash",
                 messages=messages,
             )
@@ -69,7 +69,7 @@ def summarize_youtube(url):
     return "This youtube video is " + title
 
 
-def summarize_x(url, openai_client):
+def summarize_x(url, ai_client):
     """X (旧 Twitter) のページをテキストとして簡易要約 (Gemini 使用)"""
     response = requests.get(url, headers={"User-Agent": "bot"})
     logger.debug(response.status_code)
@@ -80,9 +80,9 @@ def summarize_x(url, openai_client):
     soup = BeautifulSoup(html, "html.parser")
     meta_tags = soup.find_all("meta")
     # 元のコードの意図をくみ取って「メタタグを処理」する
-    return summarize_from_meta_tags(meta_tags, openai_client)
+    return summarize_from_meta_tags(meta_tags, ai_client)
 
-def summarize_from_meta_tags(meta_tags, openai_client):
+def summarize_from_meta_tags(meta_tags, ai_client):
     """
     メタタグを処理して要約を作成する。
       - og:image → summarize_image(...) で画像要約 (OpenAI)
@@ -91,7 +91,7 @@ def summarize_from_meta_tags(meta_tags, openai_client):
     """
     property_handlers = {
         "og:image": lambda meta: 
-            summarize_image(meta.get("content"), openai_client),
+            summarize_image(meta.get("content"), ai_client),
         "og:title": lambda meta: str(meta),
         "og:description": lambda meta: str(meta),
     }
@@ -110,7 +110,7 @@ def summarize_from_meta_tags(meta_tags, openai_client):
     return "This is a summary of the webpage: " + summarized_text
 
 
-def summarize_image(url, openai_client):
+def summarize_image(url, ai_client):
     """画像認識は Gemini では不可なので OpenAI 側 (gpt-4o) を使用"""
     messages = [
         {
@@ -123,7 +123,7 @@ def summarize_image(url, openai_client):
     ]
     try:
         summarized_text = (
-            openai_client.chat.completions.create(
+            ai_client.chat.completions.create(
                 model="gpt-4o",
                 messages=messages,
             )

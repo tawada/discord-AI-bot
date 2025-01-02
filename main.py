@@ -6,41 +6,17 @@ import discord
 import openai  # ライブラリ名はこのまま利用し、base_url で Gemini を叩く
 
 import summarizer
+from config import config
+from ai_client import ai_client
 
 
-@dataclasses.dataclass
-class Config:
-    discord_api_key: str
-    openai_api_key: str
-    gemini_api_key: str
-    target_channnel_ids: list[int]
-
-
-config = Config(
-    discord_api_key=os.environ["DISCORD_API_KEY"],
-    openai_api_key=os.environ["OPENAI_API_KEY"],  # こちらは画像認識用 OpenAI API キー
-    gemini_api_key=os.environ["GEMINI_API_KEY"],
-    target_channnel_ids=list(map(int, os.environ["CHANNEL_IDS"].split(","))),
-)
-
-# --- ここで 2 種類のクライアントを用意 ---
-# Gemini 側クライアント: テキスト生成などはこちらを使う
-gemini_client = openai.OpenAI(
-    api_key=config.gemini_api_key,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
-
-# OpenAI 側クライアント: 画像認識など Gemini ではできない機能専用
-openai_client = openai.OpenAI(api_key=config.openai_api_key)
 
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
-roleplay = os.environ["ROLE_PROMPT"]
-role_bot_name = os.environ["ROLE_NAME"]
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -77,23 +53,23 @@ async def get_reply_message(message, optional_messages=[]):
     messages = history.get_messages()
 
     # ロールプロンプトを system として追加
-    messages.append({"role": "system", "content": roleplay})
+    messages.append({"role": "system", "content": config.role_prompt})
     # ユーザーからのメッセージ
     messages.append({"role": "user", "content": user_name + ":\n" + user_message})
     # optional_messages があれば追記
     if optional_messages:
         messages.extend(optional_messages)
     # アシスタント応答
-    messages.append({"role": "assistant", "content": role_bot_name + ":\n"})
+    messages.append({"role": "assistant", "content": config.role_name + ":\n"})
 
     try:
         # --- Gemini 側でチャット生成 ---
-        response = gemini_client.chat.completions.create(
+        response = ai_client.chat.completions.create(
             model="gemini-1.5-flash",
             messages=messages,
         )
         bot_reply_message = response.choices[0].message.content
-        bot_reply_message = bot_reply_message.replace(role_bot_name + ":", "").strip()
+        bot_reply_message = bot_reply_message.replace(config.role_name + ":", "").strip()
     except Exception as err:
         logger.exception(err)
         bot_reply_message = "Error: Gemini API failed"
@@ -102,7 +78,7 @@ async def get_reply_message(message, optional_messages=[]):
     history.add(GPTMessage("user", user_name + ":\n" + user_message))
     for optional_message in optional_messages:
         history.add(GPTMessage(optional_message["role"], optional_message["content"]))
-    history.add(GPTMessage("assistant", role_bot_name + ":\n" + bot_reply_message))
+    history.add(GPTMessage("assistant", config.role_name + ":\n" + bot_reply_message))
 
     return bot_reply_message
 
@@ -134,8 +110,7 @@ async def on_message(message):
             if not attachment.filename.endswith((".png", ".jpg", ".jpeg")) and not attachment.url.endswith((".png", ".jpg", ".jpeg")):
                 continue
             try:
-                # 画像認識は Gemini ではできないため openai_client を渡す
-                summarized_text = summarizer.summarize_image(attachment.url, openai_client)
+                summarized_text = summarizer.summarize_image(attachment.url, ai_client)
                 logger.info(summarized_text[:50])
                 optional_messages.append(
                     {
@@ -154,7 +129,7 @@ async def on_message(message):
             idx_e = len(message.content)
         url = message.content[idx_s: idx_e]
         try:
-            summarized_text = summarizer.summarize_webpage(url, gemini_client, openai_client)
+            summarized_text = summarizer.summarize_webpage(url, ai_client)
             logger.info(summarized_text[:50])
             optional_messages.append(
                 {
