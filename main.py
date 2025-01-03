@@ -1,9 +1,12 @@
 import dataclasses
 import logging
 import os
+import re
 
 import discord
-import openai  # ライブラリ名はこのまま利用し、base_url で Gemini を叩く
+import openai
+import requests
+from duckduckgo_search import DDGS
 
 import summarizer
 from ai_client import ai_client
@@ -12,7 +15,6 @@ from config import config
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,9 +43,81 @@ class History:
 history = History()
 
 
+def search_and_summarize(user_question: str) -> str:
+    """
+    DuckDuckGo API を使って検索し、出てきた情報をまとめて Gemini で要約する。
+    """
+
+    # 検索queryを作成
+    messages = [
+        {"role": "user", "content": user_question},
+        {
+            "role": "system",
+            "content": (
+                f"上記のユーザの質問「{user_question}」に対して、"
+                "検索するべき単語を抽出してください。回答は単語のみで構いません。"
+            ),
+        },
+    ]
+    try:
+        response = ai_client.chat.completions.create(
+            model="gemini-1.5-flash",
+            messages=messages,
+        )
+        query = response.choices[0].message.content
+    except Exception as e:
+        logger.exception(e)
+        query = user_question
+
+    logger.info(f"Searching for: {query}")
+    # DuckDuckGo で検索
+    with DDGS() as ddgs:
+        results = list(ddgs.text(
+            keywords=query,
+            region='jp-jp',
+            max_results=10
+        ))
+
+    if not results:
+        return "検索結果が見つかりませんでした。"
+    
+    # 検索結果をまとめる
+    combined_text = f"{results}"
+
+    # モデルに送りすぎるとエラーになりやすいので適当にカット
+    combined_text = combined_text[:4096]
+
+    logger.info(f"Search snippets (trimmed): {combined_text[:100]}...")
+
+    if not combined_text.strip():
+        return "検索結果から有用な情報を取得できませんでした。"
+
+    # Gemini で要約
+    messages = [
+        {"role": "user", "content": combined_text},
+        {
+            "role": "system",
+            "content": (
+                f"上記の検索結果に基づいて、ユーザの質問「{query}」に答えるための"
+                "簡潔な日本語要約を作成してください。"
+            ),
+        },
+    ]
+    try:
+        response = ai_client.chat.completions.create(
+            model="gemini-1.5-flash",
+            messages=messages,
+        )
+        summary = response.choices[0].message.content
+    except Exception as e:
+        logger.exception(e)
+        summary = "検索の要約時にエラーが発生しました。"
+    return summary
+
+
 async def get_reply_message(message, optional_messages=[]):
     """ユーザーのメッセージに対して、Gemini (via openai ライブラリ) による返信を取得する。
-    ※画像認識はできないので、画像要約だけ別途 openai_client を使う。
+    画像認識はできないので、画像要約だけ別途 openai_client を使う。
     """
     user_message = message.content
     user_name = message.author.name
@@ -102,7 +176,7 @@ async def on_message(message):
 
     optional_messages = []
 
-    # 画像が添付されていた場合は openai_client (gpt-4o) で要約
+    # 画像が添付されていた場合は OpenAI (gpt-4o) で要約
     if message.attachments:
         for attachment in message.attachments:
             if not attachment.filename.endswith((".png", ".jpg", ".jpeg")) and not attachment.url.endswith((".png", ".jpg", ".jpeg")):
@@ -119,7 +193,7 @@ async def on_message(message):
             except RuntimeError:
                 pass
 
-    # メッセージ本文に URL が含まれている場合は、そのページを Gemini 側で要約
+    # メッセージ本文に URL が含まれている場合はページを要約
     if "http" in message.content:
         idx_s = message.content.find("http")
         idx_e = message.content.find("\n", idx_s)
@@ -138,15 +212,25 @@ async def on_message(message):
         except RuntimeError:
             pass
 
-    # 本文も添付もないなら返事しない
+    # --- ここから「～を教えて」を検出して検索する処理 ---
+    if "教えて" in message.content or "誰" in message.content or "何" in message.content or "調べて" in message.content:
+        # 検索して要約
+        summary = search_and_summarize(message.content)
+        # optional_messages に検索結果の要約を追加
+        optional_messages.append(
+            {
+                "role": "system",
+                "content": f"{message.content}の検索結果要約:\n{summary}"
+            }
+        )
+
+    # 本文も添付もなく、かつ検索にもヒットしないなら返事しない
     if not message.content and not optional_messages:
         return
 
-    # typing中アイコンの表示
     async with message.channel.typing():
         bot_reply_message = await get_reply_message(message, optional_messages)
 
-    # Discord の 2000文字制限に合わせて送信
     await send_messages(message.channel, bot_reply_message)
 
 

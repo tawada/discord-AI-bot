@@ -8,6 +8,7 @@ openai = "*"
 discord = "*"
 requests = "*"
 beautifulsoup4 = "*"
+duckduckgo-search = "*"
 
 [dev-packages]
 isort = "*"
@@ -24,5 +25,5 @@ python_version = "3.11"
 [scripts]
 format = "isort --profile black . && black ."
 lint = "flake8"
-run = "python main.py"
+main = "python main.py"
 test = "coverage run -m pytest --cov=./ --cov-report=xml"
