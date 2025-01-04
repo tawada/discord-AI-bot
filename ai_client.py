@@ -30,7 +30,6 @@ class HybridAIClient:
         self.chat = self
         self.completions = self
 
-
     def create(self, model, messages):
         if model in self.openai_models:
             return self.openai_client.chat.completions.create(
@@ -44,11 +43,12 @@ class HybridAIClient:
                     messages=messages,
                 )
             except Exception as e:
-                logger.error(f"gemini_client.chat.completions.create error: {e}")
+                logger.error(f"gemini_client error: {e}")
             return self.openai_client.chat.completions.create(
                 # Gemini がうまくいかないので一旦gpt-4oにしている
                 model=self.openai_models[0],
                 messages=messages,
             )
 
-ai_client = HybridAIClient(openai_client, gemini_client)  
+
+ai_client = HybridAIClient(openai_client, gemini_client)
