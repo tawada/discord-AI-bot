@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.fixture(autouse=True)
 def mock_env_vars(monkeypatch):
     monkeypatch.setenv("DISCORD_API_KEY", "test_discord_key")
