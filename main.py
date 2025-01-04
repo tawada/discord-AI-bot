@@ -8,6 +8,7 @@ import openai
 import requests
 from duckduckgo_search import DDGS
 
+import functions
 import summarizer
 from ai_client import ai_client
 from config import config
@@ -177,30 +178,26 @@ async def on_message(message):
     optional_messages = []
 
     # 画像が添付されていた場合は OpenAI (gpt-4o) で要約
-    if message.attachments:
-        for attachment in message.attachments:
-            if not attachment.filename.endswith((".png", ".jpg", ".jpeg")) and not attachment.url.endswith((".png", ".jpg", ".jpeg")):
-                continue
-            try:
-                summarized_text = summarizer.summarize_image(attachment.url, ai_client)
-                logger.info(summarized_text[:50])
-                optional_messages.append(
-                    {
-                        "role": "system",
-                        "content": "画像の要約:\n" + attachment.filename + "\n" + summarized_text
-                    }
-                )
-            except RuntimeError:
-                pass
+    for attachment in message.attachments:
+        if not functions.is_image_attachment(attachment):
+            continue
+        try:
+            summarized_text = summarizer.summarize_image(attachment.url, ai_client)
+            logger.info(summarized_text[:50])
+            optional_messages.append(
+                {
+                    "role": "system",
+                    "content": "画像の要約:\n" + attachment.filename + "\n" + summarized_text
+                }
+            )
+        except RuntimeError:
+            pass
 
     # メッセージ本文に URL が含まれている場合はページを要約
-    if "http" in message.content:
-        idx_s = message.content.find("http")
-        idx_e = message.content.find("\n", idx_s)
-        if idx_e == -1:
-            idx_e = len(message.content)
-        url = message.content[idx_s: idx_e]
+    if functions.has_url(message.content):
+        urls = functions.get_urls(message.content)
         try:
+            url = urls[0]
             summarized_text = summarizer.summarize_webpage(url, ai_client)
             logger.info(summarized_text[:50])
             optional_messages.append(
@@ -213,14 +210,14 @@ async def on_message(message):
             pass
 
     # --- ここから「～を教えて」を検出して検索する処理 ---
-    if "教えて" in message.content or "誰" in message.content or "何" in message.content or "調べて" in message.content:
+    if functions.is_knowledge_request(message.content):
         # 検索して要約
         summary = search_and_summarize(message.content)
         # optional_messages に検索結果の要約を追加
         optional_messages.append(
             {
                 "role": "system",
-                "content": f"{message.content}の検索結果要約:\n{summary}"
+                "content": f"「{message.content}」の検索結果要約:\n{summary}"
             }
         )
 
