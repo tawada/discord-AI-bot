@@ -8,17 +8,17 @@ url_pattern_raw = (
 url_pattern = re.compile(url_pattern_raw)
 
 
-def has_url(text_including_url: str) -> bool:
+def contains_url(text_including_url: str) -> bool:
     """Uses regex to check if a string has a URL."""
     return bool(re.search(url_pattern, text_including_url))
 
 
-def get_urls(text_including_url: str) -> list:
+def extract_urls(text_including_url: str) -> list:
     """Uses regex to extract URLs from a string."""
     return re.findall(url_pattern, text_including_url)
 
 
-def is_knowledge_request(text: str) -> bool:
+def contains_knowledge_request_keywords(text: str) -> bool:
     """Checks if a string contains any of the
        keywords for knowledge requests.
     """

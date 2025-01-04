@@ -177,7 +177,6 @@ async def on_message(message):
 
     optional_messages = []
 
-    # 画像が添付されていた場合は OpenAI (gpt-4o) で要約
     for attachment in message.attachments:
         if not functions.is_image_attachment(attachment):
             continue
@@ -193,9 +192,8 @@ async def on_message(message):
         except RuntimeError:
             pass
 
-    # メッセージ本文に URL が含まれている場合はページを要約
-    if functions.has_url(message.content):
-        urls = functions.get_urls(message.content)
+    if functions.contains_url(message.content):
+        urls = functions.extract_urls(message.content)
         try:
             url = urls[0]
             summarized_text = summarizer.summarize_webpage(url, ai_client)
@@ -210,7 +208,7 @@ async def on_message(message):
             pass
 
     # --- ここから「～を教えて」を検出して検索する処理 ---
-    if functions.is_knowledge_request(message.content):
+    if functions.contains_knowledge_request_keywords(message.content):
         # 検索して要約
         summary = search_and_summarize(message.content)
         # optional_messages に検索結果の要約を追加
