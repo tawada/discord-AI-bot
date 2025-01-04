@@ -25,5 +25,5 @@ python_version = "3.11"
 [scripts]
 format = "isort --profile black . && black ."
 lint = "flake8"
-start = "python main.py"
+main = "python main.py"
 test = "coverage run -m pytest --cov=./ --cov-report=xml"
