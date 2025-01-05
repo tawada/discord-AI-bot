@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import patch, MagicMock
 import dataclasses
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 import discord_client
 from discord_client import GPTMessage, History, search_and_summarize

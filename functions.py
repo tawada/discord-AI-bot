@@ -1,6 +1,5 @@
 import re
 
-
 url_pattern_raw = (
     r'https?://'          # http:// or https://
     r'(?:[a-zA-Z0-9$-_@.&+]|[!*()\']|%[0-9a-fA-F]{2})+'
