@@ -2,15 +2,9 @@ import logging
 
 import openai
 
-from config import config
+from config import load_config
 
 logger = logging.getLogger(__name__)
-
-gemini_client = openai.OpenAI(
-    api_key=config.gemini_api_key,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
-openai_client = openai.OpenAI(api_key=config.openai_api_key)
 
 
 class HybridAIClient:
@@ -51,4 +45,11 @@ class HybridAIClient:
             )
 
 
-ai_client = HybridAIClient(openai_client, gemini_client)
+def load_ai_client():
+    config = load_config()
+    gemini_client = openai.OpenAI(
+        api_key=config.gemini_api_key,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+    )
+    openai_client = openai.OpenAI(api_key=config.openai_api_key)
+    return HybridAIClient(openai_client, gemini_client)

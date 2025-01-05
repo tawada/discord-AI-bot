@@ -2,21 +2,38 @@ import pytest
 from unittest.mock import patch, MagicMock
 import dataclasses
 
-import main
-from main import GPTMessage, History, search_and_summarize
+import discord_client
+from discord_client import GPTMessage, History, search_and_summarize
+
+
+@pytest.fixture(autouse=True)
+def mock_discord_setup():
+    """
+    テスト実行前に、discord_client 内の config/ai_client を
+    すべてモック化するフィクスチャ。
+    """
+    with patch("discord_client.config", MagicMock(
+        # テスト中に参照される設定だけ用意すればOK
+        role_prompt="Mocked role prompt",
+        role_name="Mocked role name",
+        target_channnel_ids=[12345],
+        discord_api_key="dummy"
+    )):
+        with patch("discord_client.ai_client", MagicMock()) as mock_ai:
+            yield mock_ai
 
 
 @pytest.fixture
 def mock_ai_client():
     """ai_client.chat.completions.create をモックする"""
-    with patch("main.ai_client.chat.completions.create") as mock_create:
+    with patch("discord_client.ai_client.chat.completions.create") as mock_create:
         yield mock_create
 
 
 @pytest.fixture
 def mock_ddgs():
     """DuckDuckGo の検索をモックする"""
-    with patch("main.DDGS") as mock_ddgs_class:
+    with patch("discord_client.DDGS") as mock_ddgs_class:
         mock_ddgs_instance = MagicMock()
         mock_ddgs_instance.text.return_value = [
             "Result 1: This is the first snippet.",
@@ -67,7 +84,7 @@ def test_search_and_summarize_no_results(mock_ai_client):
     """
     DuckDuckGo で結果が一つも得られなかった場合にメッセージを返すか
     """
-    with patch("main.DDGS") as mock_ddgs_class:
+    with patch("discord_client.DDGS") as mock_ddgs_class:
         mock_ddgs_instance = MagicMock()
         mock_ddgs_instance.text.return_value = []
         mock_ddgs_class.return_value.__enter__.return_value = mock_ddgs_instance
