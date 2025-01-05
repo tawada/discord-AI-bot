@@ -1,9 +1,8 @@
 import re
 
-
 url_pattern_raw = (
-    'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]'
-    '|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+    r'https?://'          # http:// or https://
+    r'(?:[a-zA-Z0-9$-_@.&+]|[!*()\']|%[0-9a-fA-F]{2})+'
 )
 url_pattern = re.compile(url_pattern_raw)
 
@@ -15,7 +14,10 @@ def contains_url(text_including_url: str) -> bool:
 
 def extract_urls(text_including_url: str) -> list:
     """Uses regex to extract URLs from a string."""
-    return re.findall(url_pattern, text_including_url)
+    found_urls = re.findall(url_pattern, text_including_url)
+    # 末尾にくっついている可能性がある句読点などを除去
+    cleaned_urls = [url.rstrip(',.!?') for url in found_urls]
+    return cleaned_urls
 
 
 def contains_knowledge_request_keywords(text: str) -> bool:
