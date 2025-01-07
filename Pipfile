@@ -9,6 +9,7 @@ discord = "*"
 requests = "*"
 beautifulsoup4 = "*"
 duckduckgo-search = "*"
+pytest-asyncio = "*"
 
 [dev-packages]
 isort = "*"
