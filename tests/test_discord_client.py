@@ -1,5 +1,5 @@
 import dataclasses
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
@@ -96,3 +96,48 @@ def test_search_and_summarize_no_results(mock_ai_client):
 
         result = search_and_summarize("何もヒットしないテスト")
         assert "検索結果が見つかりませんでした" in result
+
+
+@pytest.mark.asyncio
+async def test_get_reply_message():
+    """get_reply_message 関数のテスト"""
+    mock_message = MagicMock()
+    mock_message.content = "テストメッセージ"
+    mock_message.author.name = "テストユーザー"
+
+    with patch("discord_client.ai_client.chat.completions.create") as mock_create:
+        mock_create.return_value.choices = [
+            MagicMock(message=MagicMock(content="テスト応答"))
+        ]
+        
+        result = await discord_client.get_reply_message(mock_message)
+        assert "テスト応答" in result
+
+
+@pytest.mark.asyncio
+async def test_send_messages():
+    """send_messages 関数のテスト - 2000文字以上のメッセージの分割送信"""
+    mock_channel = MagicMock()
+    # send メソッドを非同期関数としてモック化
+    mock_channel.send = AsyncMock()
+    long_message = "a" * 2500  # 2000文字を超えるメッセージ
+
+    await discord_client.send_messages(mock_channel, long_message)
+    
+    # 2回に分けて送信されることを確認
+    assert mock_channel.send.call_count == 2
+    # 最初の送信が2000文字
+    assert len(mock_channel.send.call_args_list[0][0][0]) == 2000
+    # 2回目の送信が残りの文字数
+    assert len(mock_channel.send.call_args_list[1][0][0]) == 500
+
+
+@pytest.mark.asyncio  # 非同期テストを実行するためのマーカー
+async def test_on_message_ignore_bot():
+    """ボット自身のメッセージは無視されることを確認"""
+    mock_message = MagicMock()
+    mock_message.author = discord_client.client.user
+    
+    with patch("discord_client.get_reply_message") as mock_get_reply:
+        await discord_client.on_message(mock_message)
+        mock_get_reply.assert_not_called()
