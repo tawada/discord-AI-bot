@@ -31,11 +31,17 @@ def summarize_webpage(url, ai_client):
     soup = BeautifulSoup(response.text, "html.parser")
 
     # Collect text from certain tags
-    content_tags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+    content_tags = ['title', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
     extracted_text = []
 
     for tag in content_tags:
         extracted_text.extend(element.get_text() for element in soup.find_all(tag))
+
+    # もしも上記タグが一つも見つからなかった場合、body 全体などをフォールバックで取得
+    if not extracted_text or not any(t.strip() for t in extracted_text):
+        fallback_text = soup.get_text().strip()
+        if fallback_text:
+            extracted_text = [fallback_text]
 
     combined_text = " ".join(extracted_text)
 
