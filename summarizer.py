@@ -16,7 +16,7 @@ def summarize_webpage(url, ai_client):
 
     # 通常のウェブページ
     response = requests.get(
-        url, 
+        url,
         headers={
             "User-Agent": (
                 "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) "
@@ -26,15 +26,32 @@ def summarize_webpage(url, ai_client):
         }
     )
     logger.debug(response.status_code)
-    logger.debug(response.text)
-    html = response.text
-    logger.debug(html[:50])
+    logger.debug(response.text[:50])
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # Collect text from certain tags
+    content_tags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+    extracted_text = []
+
+    for tag in content_tags:
+        extracted_text.extend(element.get_text() for element in soup.find_all(tag))
+
+    combined_text = " ".join(extracted_text)
+
+    # Trim to a reasonable length for processing, with slight buffer for word completion
+    max_length = 4096
+    if len(combined_text) > max_length:
+        combined_text = combined_text[:max_length]
+
+    if not combined_text.strip():
+        return "検索結果から有用な情報を取得できませんでした。"
+
+    logger.info(f"Extracted text for summarization: {combined_text[:100]}...")
 
     # Geminiで要約（テキストが長いとエラーになりやすいので切り詰め）
-    html = html[:4096]
-
     messages = [
-        {"role": "user", "content": html},
+        {"role": "user", "content": combined_text},
         {"role": "system", "content": "Please summarize the webpage."},
     ]
     try:
