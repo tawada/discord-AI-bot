@@ -35,3 +35,13 @@ def is_image_attachment(attachment) -> bool:
         attachment.filename.endswith(extensions)
         or attachment.url.endswith(extensions)
     )
+
+
+def is_youtube_link(text: str) -> bool:
+    """Checks if a string is a YouTube link."""
+    return "youtube.com" in text or "youtu.be" in text
+
+
+def is_twitter_link(text: str) -> bool:
+    """Checks if a string is a Twitter link."""
+    return "x.com" in text or "twitter.com" in text

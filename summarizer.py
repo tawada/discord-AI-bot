@@ -3,76 +3,40 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 
+import functions
+
 logger = logging.getLogger(__name__)
 
 
 def summarize_webpage(url, ai_client):
     """Gemini クライアントでウェブページを要約。YouTube や X (twitter) は別関数へ。"""
-    if "youtube.com" in url or "youtu.be" in url:
+    if functions.is_youtube_link(url):
         return summarize_youtube(url)
 
-    if "x.com" in url or "twitter.com" in url:
+    if functions.is_twitter_link(url):
         return summarize_x(url, ai_client)
 
-    # 通常のウェブページ
-    response = requests.get(
-        url,
-        headers={
-            "User-Agent": (
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) "
-                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 "
-                "Mobile/15E148 Safari/604.1"
-            )
-        }
-    )
+    return summarize_normal_website(url, ai_client)
+
+
+def summarize_normal_website(url: str, ai_client):
+    """
+    通常サイトの要約フロー。HTML を取得し、テキスト抽出し、Gemini で要約。
+    """
+    response = fetch_html(url)
     logger.debug(response.status_code)
     logger.debug(response.text[:50])
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    combined_text = extract_text_from_html(response.text)
 
-    # Collect text from certain tags
-    content_tags = ['title', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
-    extracted_text = []
-
-    for tag in content_tags:
-        extracted_text.extend(element.get_text() for element in soup.find_all(tag))
-
-    # もしも上記タグが一つも見つからなかった場合、body 全体などをフォールバックで取得
-    if not extracted_text or not any(t.strip() for t in extracted_text):
-        fallback_text = soup.get_text().strip()
-        if fallback_text:
-            extracted_text = [fallback_text]
-
-    combined_text = " ".join(extracted_text)
-
-    # Trim to a reasonable length for processing, with slight buffer for word completion
-    max_length = 4096
-    if len(combined_text) > max_length:
-        combined_text = combined_text[:max_length]
-
+    # テキストが空の場合はエラーメッセージを返す
     if not combined_text.strip():
         return "検索結果から有用な情報を取得できませんでした。"
 
     logger.info(f"Extracted text for summarization: {combined_text[:100]}...")
 
-    # Geminiで要約（テキストが長いとエラーになりやすいので切り詰め）
-    messages = [
-        {"role": "user", "content": combined_text},
-        {"role": "system", "content": "Please summarize the webpage."},
-    ]
-    try:
-        summarized_text = (
-            ai_client.chat.completions.create(
-                model="gemini-1.5-flash",
-                messages=messages,
-            )
-            .choices[0]
-            .message.content
-        )
-    except RuntimeError as err:
-        logger.exception(err)
-        raise
-    return summarized_text
+    # AI (Gemini) による要約
+    return summarize_with_gemini(combined_text, ai_client)
 
 
 def summarize_youtube(url):
@@ -104,6 +68,7 @@ def summarize_x(url, ai_client):
     meta_tags = soup.find_all("meta")
     # 元のコードの意図をくみ取って「メタタグを処理」する
     return summarize_from_meta_tags(meta_tags, ai_client)
+
 
 def summarize_from_meta_tags(meta_tags, ai_client):
     """
@@ -157,3 +122,63 @@ def summarize_image(url, ai_client):
         logger.exception(err)
         raise
     return summarized_text
+
+
+def fetch_html(url: str):
+    """HTTP GET で HTML を取得して返す。"""
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) "
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 "
+            "Mobile/15E148 Safari/604.1"
+        )
+    }
+    return requests.get(url, headers=headers)
+
+
+def extract_text_from_html(html: str) -> str:
+    """
+    BeautifulSoup で HTML をパースし、タイトルや見出し、段落などからテキストを抽出する。
+    """
+    soup = BeautifulSoup(html, "html.parser")
+
+    # 必要に応じて抽出するタグを列挙
+    content_tags = ['title', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+    extracted_texts = []
+
+    for tag in content_tags:
+        extracted_texts.extend(element.get_text() for element in soup.find_all(tag))
+
+    # タグからの抽出が空の場合は、ページ全体のテキストをフォールバック取得
+    if not any(t.strip() for t in extracted_texts):
+        fallback_text = soup.get_text().strip()
+        if fallback_text:
+            extracted_texts = [fallback_text]
+
+    combined_text = " ".join(extracted_texts)
+
+    # 長すぎる場合に切り詰める (Gemini 側で処理制限があるなら)
+    max_length = 4096
+    if len(combined_text) > max_length:
+        combined_text = combined_text[:max_length]
+
+    return combined_text
+
+
+def summarize_with_gemini(text: str, ai_client):
+    """
+    Gemini でテキストを要約する。
+    """
+    messages = [
+        {"role": "user", "content": text},
+        {"role": "system", "content": "Please summarize the webpage."},
+    ]
+    try:
+        result = ai_client.chat.completions.create(
+            model="gemini-1.5-flash",
+            messages=messages,
+        )
+        return result.choices[0].message.content
+    except RuntimeError as err:
+        logger.exception(err)
+        raise
