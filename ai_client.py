@@ -36,8 +36,8 @@ class HybridAIClient:
                     model=model,
                     messages=messages,
                 )
-            except Exception as e:
-                logger.error(f"gemini_client error: {e}")
+            except Exception as err:
+                logger.error(f"gemini_client error: {err}")
             return self.openai_client.chat.completions.create(
                 # Gemini がうまくいかないので一旦gpt-4oにしている
                 model=self.openai_models[0],
