@@ -7,6 +7,9 @@ import functions
 
 logger = logging.getLogger(__name__)
 
+text_model = "gemini-2.0-flash"
+image_model = "gpt-4o"
+
 
 def summarize_webpage(url, ai_client):
     """Gemini クライアントでウェブページを要約。YouTube や X (twitter) は別関数へ。"""
@@ -112,7 +115,7 @@ def summarize_image(url, ai_client):
     try:
         summarized_text = (
             ai_client.chat.completions.create(
-                model="gpt-4o",
+                model=image_model,
                 messages=messages,
             )
             .choices[0]
@@ -175,7 +178,7 @@ def summarize_with_gemini(text: str, ai_client):
     ]
     try:
         result = ai_client.chat.completions.create(
-            model="gemini-1.5-flash",
+            model=text_model,
             messages=messages,
         )
         return result.choices[0].message.content

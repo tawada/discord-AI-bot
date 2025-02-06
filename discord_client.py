@@ -22,6 +22,7 @@ ai_client = None
 
 logger = logging.getLogger(__name__)
 
+text_model = "gemini-2.0-flash"
 
 @dataclasses.dataclass
 class GPTMessage:
@@ -64,7 +65,7 @@ def search_and_summarize(user_question: str) -> str:
     ]
     try:
         response = ai_client.chat.completions.create(
-            model="gemini-1.5-flash",
+            model=text_model,
             messages=messages,
         )
         query = response.choices[0].message.content
@@ -108,7 +109,7 @@ def search_and_summarize(user_question: str) -> str:
     ]
     try:
         response = ai_client.chat.completions.create(
-            model="gemini-1.5-flash",
+            model=text_model,
             messages=messages,
         )
         summary = response.choices[0].message.content
@@ -140,7 +141,7 @@ async def get_reply_message(message, optional_messages=[]):
     try:
         # --- Gemini 側でチャット生成 ---
         response = ai_client.chat.completions.create(
-            model="gemini-1.5-flash",
+            model=text_model,
             messages=messages,
         )
         bot_reply_message = response.choices[0].message.content
