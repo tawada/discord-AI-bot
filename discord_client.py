@@ -145,17 +145,6 @@ async def get_reply_message(message, optional_messages=[]):
 
     # optional_messages があれば追記
     if optional_messages:
-    # LLMの知識不足を判定
-    if ai_client.is_knowledge_insufficient(text_model, messages):
-        logger.info("LLMの知識が不足しています。外部情報を検索します。")
-        summary = search_and_summarize(user_message)
-        optional_messages.append(
-            {
-                "role": "system",
-                "content": f"「{user_message}」の検索結果要約:\n{summary}"
-            }
-        )
-
         messages.extend(optional_messages)
     # アシスタント応答
     messages.append({"role": "assistant", "content": config.role_name + ":\n"})
