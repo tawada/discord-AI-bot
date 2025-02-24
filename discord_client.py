@@ -48,12 +48,13 @@ history = History()
 
 
 def search_and_summarize(user_question: str) -> str:
+
+
 def is_search_needed(user_message: str) -> bool:
     """Determine if a search is needed based on the user's message."""
     # Define keywords or patterns that indicate a search is needed
     search_keywords = ["教えて", "とは", "何", "どうやって", "方法"]
     return any(keyword in user_message for keyword in search_keywords)
-
 
     """
     DuckDuckGo API を使って検索し、出てきた情報をまとめて Gemini で要約する。
