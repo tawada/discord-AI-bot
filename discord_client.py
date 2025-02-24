@@ -48,6 +48,13 @@ history = History()
 
 
 def search_and_summarize(user_question: str) -> str:
+def is_search_needed(user_message: str) -> bool:
+    """Determine if a search is needed based on the user's message."""
+    # Define keywords or patterns that indicate a search is needed
+    search_keywords = ["教えて", "とは", "何", "どうやって", "方法"]
+    return any(keyword in user_message for keyword in search_keywords)
+
+
     """
     DuckDuckGo API を使って検索し、出てきた情報をまとめて Gemini で要約する。
     """
@@ -222,7 +229,7 @@ async def on_message(message):
             pass
 
     # --- ここから「～を教えて」を検出して検索する処理 ---
-    if functions.contains_knowledge_request_keywords(message.content):
+    if is_search_needed(message.content):
         # 検索して要約
         summary = search_and_summarize(message.content)
         # optional_messages に検索結果の要約を追加
