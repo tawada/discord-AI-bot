@@ -48,7 +48,7 @@ class HybridAIClient:
         try:
             response = self.create(model, messages)
             # Assuming the model returns a confidence score or similar metric
-            confidence_score = response.choices[0].message.get('confidence', 1.0)
+            confidence_score = getattr(response.choices[0].message, 'confidence', 1.0)
             return confidence_score < 0.5  # Threshold for insufficient knowledge
         except Exception as e:
             logger.exception(e)
