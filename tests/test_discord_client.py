@@ -115,6 +115,26 @@ async def test_get_reply_message():
 
 
 @pytest.mark.asyncio
+async def test_get_reply_message_with_insufficient_knowledge(mock_ai_client, mock_ddgs):
+    """Test get_reply_message when LLM knowledge is insufficient"""
+    mock_message = MagicMock()
+    mock_message.content = "テストメッセージ"
+    mock_message.author.name = "テストユーザー"
+
+    # Mock the knowledge insufficiency check to return True
+    with patch("discord_client.ai_client.is_knowledge_insufficient", return_value=True):
+        # Mock the AI client response
+        mock_ai_client.return_value.choices = [
+            MagicMock(message=MagicMock(content="テスト応答"))
+        ]
+
+        # Mock the search and summarize function
+        with patch("discord_client.search_and_summarize", return_value="検索結果の要約") as mock_search:
+            result = await discord_client.get_reply_message(mock_message)
+            assert "テスト応答" in result
+            mock_search.assert_called_once_with("テストメッセージ")
+
+@pytest.mark.asyncio
 async def test_send_messages():
     """send_messages 関数のテスト - 2000文字以上のメッセージの分割送信"""
     mock_channel = MagicMock()

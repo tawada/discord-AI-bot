@@ -119,6 +119,35 @@ def search_and_summarize(user_question: str) -> str:
     return summary
 
 
+def is_search_needed(user_message: str) -> bool:
+    """Determine if a search is needed based on the user's message."""
+    # Define keywords or patterns that indicate a search is needed
+    search_keywords = ["教えて", "とは", "何", "どうやって", "方法"]
+    if any(keyword in user_message for keyword in search_keywords):
+        return True
+
+    messages = [
+        {"role": "user", "content": user_message},
+        {
+            "role": "system",
+            "content": (
+                '上記のユーザーの発言に適切に答えるためにインターネット検索が必要であれば True、不要であれば False を返してください。必ず "True" または "False" のいずれかのみを返してください。'
+            ),
+        },
+    ]
+
+    try:
+        response = ai_client.chat.completions.create(
+            model=text_model,
+            messages=messages,
+        )
+        if "False" not in response.choices[0].message.content:
+            return True
+    except Exception as e:
+        logger.exception(e)
+    return False
+
+
 async def get_reply_message(message, optional_messages=[]):
     """ユーザーのメッセージに対して、Gemini (via openai ライブラリ) による返信を取得する。
     画像認識はできないので、画像要約だけ別途 openai_client を使う。
@@ -132,6 +161,17 @@ async def get_reply_message(message, optional_messages=[]):
     messages.append({"role": "system", "content": config.role_prompt})
     # ユーザーからのメッセージ
     messages.append({"role": "user", "content": user_name + ":\n" + user_message})
+    # LLMの知識不足を判定
+    if ai_client.is_knowledge_insufficient(text_model, messages):
+        logger.info("LLMの知識が不足しています。外部情報を検索します。")
+        summary = search_and_summarize(user_message)
+        optional_messages.append(
+            {
+                "role": "system",
+                "content": f"「{user_message}」の検索結果要約:\n{summary}"
+            }
+        )
+
     # optional_messages があれば追記
     if optional_messages:
         messages.extend(optional_messages)
@@ -211,7 +251,7 @@ async def on_message(message):
             pass
 
     # --- ここから「～を教えて」を検出して検索する処理 ---
-    if functions.contains_knowledge_request_keywords(message.content):
+    if is_search_needed(message.content):
         # 検索して要約
         summary = search_and_summarize(message.content)
         # optional_messages に検索結果の要約を追加

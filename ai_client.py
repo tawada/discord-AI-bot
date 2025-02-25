@@ -44,6 +44,16 @@ class HybridAIClient:
                 messages=messages,
             )
 
+    def is_knowledge_insufficient(self, model, messages):
+        try:
+            response = self.create(model, messages)
+            # Assuming the model returns a confidence score or similar metric
+            confidence_score = getattr(response.choices[0].message, 'confidence', 1.0)
+            return confidence_score < 0.5  # Threshold for insufficient knowledge
+        except Exception as e:
+            logger.exception(e)
+            return True
+
 
 def load_ai_client():
     config = load_config()
