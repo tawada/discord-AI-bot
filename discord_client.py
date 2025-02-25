@@ -123,7 +123,29 @@ def is_search_needed(user_message: str) -> bool:
     """Determine if a search is needed based on the user's message."""
     # Define keywords or patterns that indicate a search is needed
     search_keywords = ["教えて", "とは", "何", "どうやって", "方法"]
-    return any(keyword in user_message for keyword in search_keywords)
+    if any(keyword in user_message for keyword in search_keywords):
+        return True
+
+    messages = [
+        {"role": "user", "content": user_message},
+        {
+            "role": "system",
+            "content": (
+                '上記のユーザーの発言に適切に答えるためにインターネット検索が必要であれば True、不要であれば False を返してください。必ず "True" または "False" のいずれかのみを返してください。'
+            ),
+        },
+    ]
+
+    try:
+        response = ai_client.chat.completions.create(
+            model=text_model,
+            messages=messages,
+        )
+        if "False" not in response.choices[0].message.content:
+            return True
+    except Exception as e:
+        logger.exception(e)
+    return False
 
 
 async def get_reply_message(message, optional_messages=[]):
