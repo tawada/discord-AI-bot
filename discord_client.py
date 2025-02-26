@@ -204,17 +204,27 @@ async def on_ready():
     logger.info("We have logged in as {0.user}".format(client))
 
 
+def ignore_message(message):
+    return message.author == client.user or message.author.bot
+
+
+def check_if_channel_is_target(message):
+    return message.channel.id in config.target_channnel_ids
+
+
 @client.event
 async def on_message(message):
-    if message.author == client.user:
-        # ボット自身の発言は無視
-        return
-
     logger.info(f"channel_id:{message.channel.id}")
     logger.info(f"name:{message.author.name}")
     logger.info(f"message:{message.content[:50]}")
 
-    if message.channel.id not in config.target_channnel_ids:
+    if ignore_message(message):
+        # ボット自身の発言は無視
+        logger.info("ignore message")
+        return
+
+    if not check_if_channel_is_target(message):
+        # 対象チャンネル以外は無視
         logger.info("not target channel")
         return
 
@@ -222,6 +232,7 @@ async def on_message(message):
 
     for attachment in message.attachments:
         if not functions.is_image_attachment(attachment):
+            # 画像以外は無視
             continue
         try:
             summarized_text = summarizer.summarize_image(attachment.url, ai_client)
