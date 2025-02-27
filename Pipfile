@@ -10,6 +10,7 @@ requests = "*"
 beautifulsoup4 = "*"
 duckduckgo-search = "*"
 pytest-asyncio = "*"
+coverage = "*"
 
 [dev-packages]
 isort = "*"
