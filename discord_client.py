@@ -214,10 +214,6 @@ def check_if_channel_is_target(message):
 
 @client.event
 async def on_message(message):
-    logger.info(f"channel_id:{message.channel.id}")
-    logger.info(f"name:{message.author.name}")
-    logger.info(f"message:{message.content[:50]}")
-
     if ignore_message(message):
         # ボット自身の発言は無視
         logger.info("ignore message")
@@ -227,6 +223,10 @@ async def on_message(message):
         # 対象チャンネル以外は無視
         logger.info("not target channel")
         return
+
+    logger.info(f"channel_id:{message.channel.id}")
+    logger.info(f"name:{message.author.name}")
+    logger.info(f"message:{message.content[:50]}")
 
     optional_messages = []
 
