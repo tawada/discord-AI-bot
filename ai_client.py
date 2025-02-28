@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Tuple
 
 import openai
 from anthropic import Anthropic
@@ -80,28 +80,36 @@ class HybridAIClient:
         """フォールバック用のレスポンスを生成"""
         return self._create_with_openai(self.openai_models[0], messages)
 
+    def _select_model_handler(self, model: str) -> Tuple[Callable[[str, List[Dict[str, str]]], Any], str]:
+        """モデルに応じたハンドラーを選択"""
+        if model in self.openai_models:
+            return self._create_with_openai, "openai"
+        if model in self.anthropic_models and self.anthropic_client:
+            return self._create_with_anthropic, "anthropic"
+        return self._create_with_gemini, "gemini"
+
+    def _execute_with_fallback(
+        self,
+        handler: Callable[[str, List[Dict[str, str]]], Any],
+        model: str,
+        messages: List[Dict[str, str]],
+        provider: str
+    ) -> Any:
+        """ハンドラーを実行し、失敗時はフォールバック"""
+        try:
+            return handler(model, messages)
+        except Exception as err:
+            logger.error(f"{provider}_client error: {err}")
+            return self._get_fallback_response(messages)
+
     def create(self, model: str, messages: List[Dict[str, str]]) -> Any:
         """指定されたモデルを使用してレスポンスを生成
         
         各モデルでエラーが発生した場合は、OpenAIのモデルにフォールバックする
         """
         try:
-            if model in self.openai_models:
-                return self._create_with_openai(model, messages)
-            
-            if model in self.anthropic_models and self.anthropic_client:
-                try:
-                    return self._create_with_anthropic(model, messages)
-                except Exception as err:
-                    logger.error(f"anthropic_client error: {err}")
-                    return self._get_fallback_response(messages)
-            
-            try:
-                return self._create_with_gemini(model, messages)
-            except Exception as err:
-                logger.error(f"gemini_client error: {err}")
-                return self._get_fallback_response(messages)
-            
+            handler, provider = self._select_model_handler(model)
+            return self._execute_with_fallback(handler, model, messages, provider)
         except Exception as err:
             logger.error(f"Unexpected error in create: {err}")
             return self._get_fallback_response(messages)
