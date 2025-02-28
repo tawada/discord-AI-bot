@@ -7,6 +7,7 @@ class ConfigTemplate:
     discord_api_key: str
     openai_api_key: str
     gemini_api_key: str
+    anthropic_api_key: str
     target_channnel_ids: list[int]
     role_prompt: str
     role_name: str
@@ -18,6 +19,7 @@ def load_config():
         discord_api_key=os.environ["DISCORD_API_KEY"],
         openai_api_key=os.environ["OPENAI_API_KEY"],
         gemini_api_key=os.environ["GEMINI_API_KEY"],
+        anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
         # Target channel IDs
         target_channnel_ids=list(map(int, os.environ["CHANNEL_IDS"].split(","))),
         # Roleplay settings
