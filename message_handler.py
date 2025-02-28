@@ -30,7 +30,7 @@ async def get_reply_message(
     # ユーザーからのメッセージ
     messages.append({"role": "user", "content": user_name + ":\n" + user_message})
     # LLMの知識不足を判定
-    if ai_client.is_knowledge_insufficient(text_model, messages):
+    if ai_client.is_knowledge_insufficient(text_model, messages) and not optional_messages:
         logger.info("LLMの知識が不足しています。外部情報を検索します。")
         summary = search_and_summarize(user_message, ai_client, text_model)
         optional_messages.append(
