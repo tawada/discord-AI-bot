@@ -181,7 +181,7 @@ async def get_reply_message(message, optional_messages=[]):
     try:
         # --- Gemini 側でチャット生成 ---
         response = ai_client.chat.completions.create(
-            model=text_model,
+            model=ai_client.anthropic_models[0],
             messages=messages,
         )
         bot_reply_message = response.choices[0].message.content

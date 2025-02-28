@@ -11,6 +11,7 @@ beautifulsoup4 = "*"
 duckduckgo-search = "*"
 pytest-asyncio = "*"
 coverage = "*"
+anthropic = "*"
 
 [dev-packages]
 isort = "*"
