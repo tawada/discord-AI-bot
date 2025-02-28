@@ -19,9 +19,9 @@ def load_config():
         discord_api_key=os.environ["DISCORD_API_KEY"],
         openai_api_key=os.environ["OPENAI_API_KEY"],
         gemini_api_key=os.environ["GEMINI_API_KEY"],
-        anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
+        anthropic_api_key=os.environ["ANTHROPIC_API_KEY"],
         # Target channel IDs
-        target_channnel_ids=list(map(int, os.environ["CHANNEL_IDS"].split(","))),
+        target_channel_ids=list(map(int, os.environ["CHANNEL_IDS"].split(","))),
         # Roleplay settings
         role_prompt=os.environ["ROLE_PROMPT"],
         role_name=os.environ["ROLE_NAME"],

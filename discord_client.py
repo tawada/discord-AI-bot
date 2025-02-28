@@ -55,7 +55,7 @@ def ignore_message(message: discord.Message) -> bool:
 
 def check_if_channel_is_target(message: discord.Message) -> bool:
     """対象チャンネルかどうかを確認"""
-    return message.channel.id in config.target_channnel_ids
+    return message.channel.id in config.target_channel_ids
 
 @client.event
 async def on_ready():
