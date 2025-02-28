@@ -29,15 +29,16 @@ class HybridAIClient:
         self.completions = self
 
     def _convert_messages_for_anthropic(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
-        """Convert OpenAI message format to Anthropic format"""
+        """Convert OpenAI message format to Anthropic format.
+        Excludes system messages as they are handled separately."""
         role_mapping = {
-            "system": "system",
             "user": "user",
             "assistant": "assistant"
         }
         return [
             {"role": role_mapping[msg["role"]], "content": msg["content"]}
             for msg in messages
+            if msg["role"] != "system"
         ]
 
     def create(self, model: str, messages: List[Dict[str, str]]) -> Any:
