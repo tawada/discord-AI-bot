@@ -75,7 +75,7 @@ def test_search_and_summarize_success(mock_ai_client, mock_ddgs):
         MagicMock(message=MagicMock(content="Dummy AI summary"))
     ]
 
-    result = search_and_summarize("Python の概要を教えて")
+    result = search_and_summarize("Python の概要を教えて", discord_client.ai_client, discord_client.text_model)
     assert "Dummy AI summary" in result  # 要約結果が返ってくる
 
     # DuckDuckGo の検索が呼ばれているかを確認
@@ -95,7 +95,7 @@ def test_search_and_summarize_no_results(mock_ai_client):
             MagicMock(message=MagicMock(content="No query found"))
         ]
 
-        result = search_and_summarize("何もヒットしないテスト")
+        result = search_and_summarize("何もヒットしないテスト", discord_client.ai_client, discord_client.text_model)
         assert "検索結果が見つかりませんでした" in result
 
 
@@ -130,7 +130,7 @@ async def test_get_reply_message_with_insufficient_knowledge(mock_ai_client, moc
         ]
 
         # Mock the search and summarize function
-        with patch("discord_client.search_and_summarize", return_value="検索結果の要約") as mock_search:
+        with patch("search_handler.search_and_summarize", return_value="検索結果の要約") as mock_search:
             result = await discord_client.process_message(mock_message, discord_client.history, discord_client.ai_client, discord_client.text_model, discord_client.config)
             assert "テスト応答" in result
             mock_search.assert_called_once_with("テストメッセージ", discord_client.ai_client, discord_client.text_model)
