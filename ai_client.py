@@ -41,47 +41,70 @@ class HybridAIClient:
             if msg["role"] != "system"
         ]
 
+    def _create_with_openai(self, model: str, messages: List[Dict[str, str]]) -> Any:
+        """OpenAIのモデルを使用してレスポンスを生成"""
+        return self.openai_client.chat.completions.create(
+            model=model,
+            messages=messages,
+        )
+
+    def _create_with_anthropic(self, model: str, messages: List[Dict[str, str]]) -> Any:
+        """Anthropicのモデルを使用してレスポンスを生成"""
+        anthropic_messages = self._convert_messages_for_anthropic(messages)
+        system_message = next((msg["content"] for msg in messages if msg["role"] == "system"), None)
+        response = self.anthropic_client.messages.create(
+            model=model,
+            max_tokens=1024,
+            messages=anthropic_messages,
+            system=system_message
+        )
+        return self._convert_anthropic_response(response)
+
+    def _create_with_gemini(self, model: str, messages: List[Dict[str, str]]) -> Any:
+        """Geminiのモデルを使用してレスポンスを生成"""
+        return self.gemini_client.chat.completions.create(
+            model=model,
+            messages=messages,
+        )
+
+    def _convert_anthropic_response(self, response: Any) -> Any:
+        """AnthropicのレスポンスをOpenAI形式に変換"""
+        message = type('Message', (), {
+            'content': response.content[0].text,
+            'role': 'assistant'
+        })
+        choice = type('Choice', (), {'message': message})
+        return type('AnthropicResponse', (), {'choices': [choice]})
+
+    def _get_fallback_response(self, messages: List[Dict[str, str]]) -> Any:
+        """フォールバック用のレスポンスを生成"""
+        return self._create_with_openai(self.openai_models[0], messages)
+
     def create(self, model: str, messages: List[Dict[str, str]]) -> Any:
-        if model in self.openai_models:
-            return self.openai_client.chat.completions.create(
-                model=model,
-                messages=messages,
-            )
-        elif model in self.anthropic_models and self.anthropic_client:
+        """指定されたモデルを使用してレスポンスを生成
+        
+        各モデルでエラーが発生した場合は、OpenAIのモデルにフォールバックする
+        """
+        try:
+            if model in self.openai_models:
+                return self._create_with_openai(model, messages)
+            
+            if model in self.anthropic_models and self.anthropic_client:
+                try:
+                    return self._create_with_anthropic(model, messages)
+                except Exception as err:
+                    logger.error(f"anthropic_client error: {err}")
+                    return self._get_fallback_response(messages)
+            
             try:
-                anthropic_messages = self._convert_messages_for_anthropic(messages)
-                system_message = next((msg["content"] for msg in messages if msg["role"] == "system"), None)
-                response = self.anthropic_client.messages.create(
-                    model=model,
-                    max_tokens=1024,
-                    messages=anthropic_messages,
-                    system=system_message
-                )
-                # Convert Anthropic response to OpenAI format
-                message = type('Message', (), {
-                    'content': response.content[0].text,
-                    'role': 'assistant'
-                })
-                choice = type('Choice', (), {'message': message})
-                return type('AnthropicResponse', (), {'choices': [choice]})
-            except Exception as err:
-                logger.error(f"anthropic_client error: {err}")
-                return self.openai_client.chat.completions.create(
-                    model=self.openai_models[0],
-                    messages=messages,
-                )
-        else:
-            try:
-                return self.gemini_client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                )
+                return self._create_with_gemini(model, messages)
             except Exception as err:
                 logger.error(f"gemini_client error: {err}")
-                return self.openai_client.chat.completions.create(
-                    model=self.openai_models[0],
-                    messages=messages,
-                )
+                return self._get_fallback_response(messages)
+            
+        except Exception as err:
+            logger.error(f"Unexpected error in create: {err}")
+            return self._get_fallback_response(messages)
 
     def is_knowledge_insufficient(self, model, messages):
         try:
