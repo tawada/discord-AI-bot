@@ -123,14 +123,14 @@ async def test_get_reply_message_with_insufficient_knowledge(mock_ai_client, moc
     mock_message.author.name = "テストユーザー"
 
     # Mock the knowledge insufficiency check to return True
-    with patch("search_handler.is_search_needed", return_value=True):
+    with patch("discord_client.ai_client.is_knowledge_insufficient", return_value=True):
         # Mock the AI client response
         mock_ai_client.return_value.choices = [
             MagicMock(message=MagicMock(content="テスト応答"))
         ]
 
         # Mock the search and summarize function
-        with patch("search_handler.search_and_summarize", return_value="検索結果の要約") as mock_search:
+        with patch("message_handler.search_and_summarize", return_value="検索結果の要約") as mock_search:
             result = await discord_client.process_message(mock_message, discord_client.history, discord_client.ai_client, discord_client.text_model, discord_client.config)
             assert "テスト応答" in result
             mock_search.assert_called_once_with("テストメッセージ", discord_client.ai_client, discord_client.text_model)
