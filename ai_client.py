@@ -57,14 +57,12 @@ class HybridAIClient:
                     system=system_message
                 )
                 # Convert Anthropic response to OpenAI format
-                return type('AnthropicResponse', (), {
-                    'choices': [{
-                        'message': type('Message', (), {
-                            'content': response.content[0].text,
-                            'role': 'assistant'
-                        })
-                    }]
+                message = type('Message', (), {
+                    'content': response.content[0].text,
+                    'role': 'assistant'
                 })
+                choice = type('Choice', (), {'message': message})
+                return type('AnthropicResponse', (), {'choices': [choice]})
             except Exception as err:
                 logger.error(f"anthropic_client error: {err}")
                 return self.openai_client.chat.completions.create(
