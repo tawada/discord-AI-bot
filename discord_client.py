@@ -22,7 +22,34 @@ ai_client = None
 
 logger = logging.getLogger(__name__)
 
-text_model = "gemini-2.0-flash"
+# 利用可能なモデルのリスト
+AVAILABLE_MODELS = [
+    "gemini-2.0-flash",  # Gemini
+    "gpt-4o",            # OpenAI
+    "claude-3-sonnet-20240229"  # Anthropic
+]
+
+def validate_model(model: str) -> str:
+    """モデル名を検証し、有効なモデル名を返す
+    
+    Args:
+        model: 検証するモデル名
+        
+    Returns:
+        検証済みのモデル名
+        
+    Raises:
+        ValueError: モデル名が無効な場合
+    """
+    if model not in AVAILABLE_MODELS:
+        raise ValueError(
+            f"Invalid model: {model}. "
+            f"Available models are: {', '.join(AVAILABLE_MODELS)}"
+        )
+    return model
+
+# デフォルトのテキストモデル（初期化時に検証）
+text_model = validate_model("gemini-2.0-flash")
 
 @dataclasses.dataclass
 class GPTMessage:
@@ -296,9 +323,30 @@ async def send_messages(channel, message):
         await channel.send(short_message)
 
 
+def set_text_model(model: str) -> None:
+    """テキストモデルを設定する
+    
+    Args:
+        model: 設定するモデル名
+        
+    Raises:
+        ValueError: モデル名が無効な場合
+    """
+    global text_model
+    text_model = validate_model(model)
+
 def run():
     global config
     global ai_client
     config = load_config()
     ai_client = load_ai_client()
+    
+    # 環境変数でモデルを上書き可能に
+    if "TEXT_MODEL" in os.environ:
+        try:
+            set_text_model(os.environ["TEXT_MODEL"])
+            logger.info(f"Using text model: {text_model}")
+        except ValueError as e:
+            logger.error(f"Invalid TEXT_MODEL environment variable: {e}")
+    
     client.run(config.discord_api_key)
