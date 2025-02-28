@@ -8,7 +8,7 @@ class ConfigTemplate:
     openai_api_key: str
     gemini_api_key: str
     anthropic_api_key: str
-    target_channnel_ids: list[int]
+    target_channel_ids: list[int]
     role_prompt: str
     role_name: str
 
