@@ -143,7 +143,8 @@ def test_hybrid_client_claude_model_not_configured(mock_openai_client, mock_gemi
 
 
 def test_message_format_conversion():
-    """メッセージフォーマット変換のテスト"""
+    """メッセージフォーマット変換のテスト
+    システムメッセージは別途処理されるため、変換結果には含まれない"""
     hybrid = HybridAIClient(
         openai_client=MagicMock(),
         gemini_client=MagicMock(),
@@ -158,10 +159,8 @@ def test_message_format_conversion():
 
     converted = hybrid._convert_messages_for_anthropic(messages)
 
-    assert len(converted) == 3
-    assert converted[0]["role"] == "system"
-    assert converted[0]["content"] == "System message"
-    assert converted[1]["role"] == "user"
-    assert converted[1]["content"] == "User message"
-    assert converted[2]["role"] == "assistant"
-    assert converted[2]["content"] == "Assistant message"
+    assert len(converted) == 2  # システムメッセージは除外される
+    assert converted[0]["role"] == "user"
+    assert converted[0]["content"] == "User message"
+    assert converted[1]["role"] == "assistant"
+    assert converted[1]["content"] == "Assistant message"
