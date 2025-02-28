@@ -123,7 +123,7 @@ async def test_get_reply_message_with_insufficient_knowledge(mock_ai_client, moc
     mock_message.author.name = "テストユーザー"
 
     # Mock the knowledge insufficiency check to return True
-    with patch("discord_client.ai_client.is_knowledge_insufficient", return_value=True):
+    with patch("search_handler.is_search_needed", return_value=True):
         # Mock the AI client response
         mock_ai_client.return_value.choices = [
             MagicMock(message=MagicMock(content="テスト応答"))
