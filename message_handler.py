@@ -63,7 +63,10 @@ async def get_reply_message(
         history.add(GPTMessage(optional_message["role"], optional_message["content"]))
     history.add(GPTMessage("assistant", config.role_name + ":\n" + bot_reply_message))
 
-    return bot_reply_message
+    # 括弧や空行を除去
+    validated_message = functions.remove_brackets_and_spaces(bot_reply_message)
+
+    return validated_message
 
 
 async def process_message(
@@ -143,3 +146,4 @@ async def send_messages(channel: discord.TextChannel, message: str) -> None:
 
     for short_message in short_messages:
         await channel.send(short_message)
+    

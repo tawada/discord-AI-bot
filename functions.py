@@ -5,7 +5,7 @@ url_pattern_raw = (
     r'(?:[a-zA-Z0-9$-_@.&+]|[!*()\']|%[0-9a-fA-F]{2})+'
 )
 url_pattern = re.compile(url_pattern_raw)
-
+brackets_pattern = re.compile(r'\(.*?\)|（.*?）', flags=re.DOTALL)
 
 def contains_url(text_including_url: str) -> bool:
     """Uses regex to check if a string has a URL."""
@@ -45,3 +45,23 @@ def is_youtube_link(text: str) -> bool:
 def is_twitter_link(text: str) -> bool:
     """Checks if a string is a Twitter link."""
     return "x.com" in text or "twitter.com" in text
+
+
+def remove_brackets_and_spaces(text: str) -> str:
+    """Removes brackets and spaces from a string."""
+
+    # 丸括弧と大括弧（全角）の中にある文字も含めて削除する（改行も含めて非貪欲マッチ）
+    text_no_brackets = re.sub(brackets_pattern, '', text)
+
+    # 各行の前後空白を削除したうえで、空行は削除する
+    lines = [line.strip() for line in text_no_brackets.split('\n')]
+    lines = [line for line in lines if line]  # 空行の削除
+
+    # 改行で再度結合する
+    removed_text = '\n'.join(lines)
+
+    # もし空ならば、1個目の括弧を残す
+    if not removed_text:
+        removed_text = re.sub(brackets_pattern, '', text, count=1)
+
+    return removed_text
