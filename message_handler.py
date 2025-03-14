@@ -66,6 +66,10 @@ async def get_reply_message(
     # 括弧や空行を除去
     validated_message = functions.remove_brackets_and_spaces(bot_reply_message)
 
+    # 2文以内・100文字以内に収める
+    validated_message = functions.limit_sentences(validated_message, 2)
+
+
     return validated_message
 
 

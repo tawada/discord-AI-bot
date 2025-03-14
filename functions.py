@@ -65,3 +65,22 @@ def remove_brackets_and_spaces(text: str) -> str:
         removed_text = re.sub(brackets_pattern, '', text, count=1)
 
     return removed_text
+
+
+def limit_sentences(text: str, max_sentences: int) -> str:
+    """2文以内・100文字以内に収める
+    
+    100文字で単純に打ち切るのではなく改行で区切る
+    """
+    sentences = text.split("\n")
+    if len(sentences) > max_sentences:
+        text = "\n".join(sentences[:max_sentences])
+
+    # 100文字以内に収める．ただし，改行で区切る
+    if len(text) > 100:
+        text = text[:100]
+        # 最後の改行までの文字数を取得
+        last_newline_index = text.rfind("\n")
+        text = text[:last_newline_index]
+
+    return text
