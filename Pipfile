@@ -12,6 +12,7 @@ duckduckgo-search = "*"
 pytest-asyncio = "*"
 coverage = "*"
 anthropic = "*"
+pydantic-settings = "*"
 
 [dev-packages]
 isort = "*"
