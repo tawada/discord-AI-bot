@@ -27,4 +27,4 @@ discord-AI-botは、Discord上で動作するAIチャットボットです。Ope
 ## 任意の環境変数
 
 - `TEXT_MODEL`: 使用するAIモデル（デフォルト: "gemini-2.0-flash"）
-  - 利用可能なモデル: "gemini-2.0-flash", "gpt-4o", "claude-3-sonnet-20240229"
+  - 利用可能なモデル: "gemini-2.0-flash", "gpt-4o"
