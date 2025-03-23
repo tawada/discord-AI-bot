@@ -110,9 +110,9 @@ def run():
     ai_client = load_ai_client()
     
     # 環境変数でモデルを上書き可能に
-    if "TEXT_MODEL" in os.environ:
+    if config.text_model:
         try:
-            set_text_model(os.environ["TEXT_MODEL"])
+            set_text_model(config.text_model)
             logger.info(f"Using text model: {text_model}")
         except ValueError as e:
             logger.error(f"Invalid TEXT_MODEL environment variable: {e}")

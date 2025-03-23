@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     openai_api_key: str
     gemini_api_key: str
     anthropic_api_key: str
+    text_model: str | None = None
     target_channel_ids: list[int] = Field(
         ..., alias="CHANNEL_IDS", description="Comma-separated list of channel IDs"
     )
