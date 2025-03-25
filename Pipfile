@@ -13,6 +13,7 @@ pytest-asyncio = "*"
 coverage = "*"
 anthropic = "*"
 pydantic-settings = "*"
+loguru = "*"
 
 [dev-packages]
 isort = "*"
