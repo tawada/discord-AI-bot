@@ -1,7 +1,7 @@
-import logging
 import os
 
 import discord
+from loguru import logger
 
 from ai_client import load_ai_client
 from config import load_config
@@ -14,8 +14,6 @@ client = discord.Client(intents=intents)
 
 config = None
 ai_client = None
-
-logger = logging.getLogger(__name__)
 
 # 利用可能なモデルのリスト
 AVAILABLE_MODELS = [

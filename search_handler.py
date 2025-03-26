@@ -1,9 +1,7 @@
-import logging
+from loguru import logger
 from typing import List, Dict, Any
 
 from duckduckgo_search import DDGS
-
-logger = logging.getLogger(__name__)
 
 
 def search_and_summarize(user_question: str, ai_client: Any, text_model: str) -> str:

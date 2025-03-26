@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 from typing import List, Dict, Any
 
 import discord
@@ -7,8 +7,6 @@ import functions
 import summarizer
 from message_history import GPTMessage, History
 from search_handler import search_and_summarize, is_search_needed
-
-logger = logging.getLogger(__name__)
 
 
 async def get_reply_message(

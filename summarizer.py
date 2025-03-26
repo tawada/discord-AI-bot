@@ -1,11 +1,9 @@
-import logging
+from loguru import logger
 
 import requests
 from bs4 import BeautifulSoup
 
 import functions
-
-logger = logging.getLogger(__name__)
 
 text_model = "gemini-2.0-flash"
 image_model = "gpt-4o"

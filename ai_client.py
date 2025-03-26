@@ -1,12 +1,10 @@
-import logging
+from loguru import logger
 from typing import Any, Callable, Dict, List, Tuple
 
 import openai
 from anthropic import Anthropic
 
 from config import load_config
-
-logger = logging.getLogger(__name__)
 
 
 class HybridAIClient:
@@ -108,8 +106,18 @@ class HybridAIClient:
         各モデルでエラーが発生した場合は、OpenAIのモデルにフォールバックする
         """
         try:
+            LOG_LEN = 20
+            for message in messages:
+                log_msg = message['content'][:LOG_LEN]
+                if isinstance(log_msg, str):
+                    log_msg = log_msg.replace('\n', ' ')
+                logger.info(f"LLM IN: {log_msg}")
             handler, provider = self._select_model_handler(model)
-            return self._execute_with_fallback(handler, model, messages, provider)
+            response = self._execute_with_fallback(handler, model, messages, provider)
+            # subscriptableか判定
+            if response.choices[0].message.content is not None:
+                logger.info(f"LLM OUT: {response.choices[0].message.content[:LOG_LEN]}")
+            return response
         except Exception as err:
             logger.error(f"Unexpected error in create: {err}")
             return self._get_fallback_response(messages)
