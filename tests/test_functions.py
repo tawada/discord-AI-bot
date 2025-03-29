@@ -21,7 +21,10 @@ def test_contains_url(text, expected):
     "text,expected",
     [
         ("See this https://example.com", ["https://example.com"]),
-        ("Two links: http://foo.com, https://bar.com", ["http://foo.com", "https://bar.com"]),
+        (
+            "Two links: http://foo.com, https://bar.com",
+            ["http://foo.com", "https://bar.com"],
+        ),
         ("No link", []),
     ],
 )

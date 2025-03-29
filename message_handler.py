@@ -1,12 +1,12 @@
-from loguru import logger
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import discord
+from loguru import logger
 
 import functions
 import summarizer
 from message_history import GPTMessage, History
-from search_handler import search_and_summarize, is_search_needed
+from search_handler import is_search_needed, search_and_summarize
 
 
 async def get_reply_message(
@@ -15,7 +15,7 @@ async def get_reply_message(
     ai_client: Any,
     text_model: str,
     config: Any,
-    optional_messages: List[Dict[str, str]] = []
+    optional_messages: List[Dict[str, str]] = [],
 ) -> str:
     """ユーザーのメッセージに対して、LLMによる返信を取得する"""
     user_message = message.content
@@ -28,13 +28,16 @@ async def get_reply_message(
     # ユーザーからのメッセージ
     messages.append({"role": "user", "content": user_name + ":\n" + user_message})
     # LLMの知識不足を判定
-    if ai_client.is_knowledge_insufficient(text_model, messages) and not optional_messages:
+    if (
+        ai_client.is_knowledge_insufficient(text_model, messages)
+        and not optional_messages
+    ):
         logger.info("LLMの知識が不足しています。外部情報を検索します。")
         summary = search_and_summarize(user_message, ai_client, text_model)
         optional_messages.append(
             {
                 "role": "system",
-                "content": f"「{user_message}」の検索結果要約:\n{summary}"
+                "content": f"「{user_message}」の検索結果要約:\n{summary}",
             }
         )
 
@@ -50,7 +53,9 @@ async def get_reply_message(
             messages=messages,
         )
         bot_reply_message = response.choices[0].message.content
-        bot_reply_message = bot_reply_message.replace(config.role_name + ":", "").strip()
+        bot_reply_message = bot_reply_message.replace(
+            config.role_name + ":", ""
+        ).strip()
     except Exception as err:
         logger.exception(err)
         bot_reply_message = "Error: LLM API failed"
@@ -67,7 +72,6 @@ async def get_reply_message(
     # 2文以内・100文字以内に収める
     validated_message = functions.limit_sentences(validated_message, 2)
 
-
     return validated_message
 
 
@@ -76,7 +80,7 @@ async def process_message(
     history: History,
     ai_client: Any,
     text_model: str,
-    config: Any
+    config: Any,
 ) -> str:
     """メッセージを処理し、必要な情報を収集して返信を生成する"""
     optional_messages = []
@@ -91,7 +95,10 @@ async def process_message(
             optional_messages.append(
                 {
                     "role": "system",
-                    "content": "画像の要約:\n" + attachment.filename + "\n" + summarized_text
+                    "content": "画像の要約:\n"
+                    + attachment.filename
+                    + "\n"
+                    + summarized_text,
                 }
             )
         except RuntimeError:
@@ -119,7 +126,7 @@ async def process_message(
         optional_messages.append(
             {
                 "role": "system",
-                "content": f"「{message.content}」の検索結果要約:\n{summary}"
+                "content": f"「{message.content}」の検索結果要約:\n{summary}",
             }
         )
 
@@ -128,12 +135,7 @@ async def process_message(
         return ""
 
     return await get_reply_message(
-        message,
-        history,
-        ai_client,
-        text_model,
-        config,
-        optional_messages
+        message, history, ai_client, text_model, config, optional_messages
     )
 
 
@@ -148,4 +150,3 @@ async def send_messages(channel: discord.TextChannel, message: str) -> None:
 
     for short_message in short_messages:
         await channel.send(short_message)
-    

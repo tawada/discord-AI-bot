@@ -1,5 +1,5 @@
 import dataclasses
-from typing import List, Dict
+from typing import Dict, List
 
 
 @dataclasses.dataclass
@@ -19,5 +19,5 @@ class History:
     def get_messages(self) -> List[Dict[str, str]]:
         """Get the last N messages in OpenAI format"""
         return [
-            dataclasses.asdict(message) for message in self.messages[-self.num_output:]
+            dataclasses.asdict(message) for message in self.messages[-self.num_output :]
         ]

@@ -29,7 +29,9 @@ def mock_anthropic_client():
 
 
 def test_hybrid_client_openai_model(mock_openai_client, mock_gemini_client):
-    hybrid = HybridAIClient(openai_client=mock_openai_client, gemini_client=mock_gemini_client)
+    hybrid = HybridAIClient(
+        openai_client=mock_openai_client, gemini_client=mock_gemini_client
+    )
 
     messages = [{"role": "user", "content": "Hello from openai."}]
     hybrid.create("gpt-4o", messages)
@@ -42,8 +44,12 @@ def test_hybrid_client_openai_model(mock_openai_client, mock_gemini_client):
     mock_gemini_client.chat.completions.create.assert_not_called()
 
 
-def test_hybrid_client_gemini_model_fallback_success(mock_openai_client, mock_gemini_client):
-    hybrid = HybridAIClient(openai_client=mock_openai_client, gemini_client=mock_gemini_client)
+def test_hybrid_client_gemini_model_fallback_success(
+    mock_openai_client, mock_gemini_client
+):
+    hybrid = HybridAIClient(
+        openai_client=mock_openai_client, gemini_client=mock_gemini_client
+    )
 
     messages = [{"role": "user", "content": "Hello from gemini."}]
     hybrid.create("gemini-1.5-flash", messages)
@@ -56,11 +62,15 @@ def test_hybrid_client_gemini_model_fallback_success(mock_openai_client, mock_ge
     mock_openai_client.chat.completions.create.assert_not_called()
 
 
-def test_hybrid_client_gemini_model_fallback_error(mock_openai_client, mock_gemini_client):
+def test_hybrid_client_gemini_model_fallback_error(
+    mock_openai_client, mock_gemini_client
+):
     """Gemini が失敗した時に fallback で openai_client.gpt-4o を呼び出す"""
     mock_gemini_client.chat.completions.create.side_effect = Exception("Gemini error")
 
-    hybrid = HybridAIClient(openai_client=mock_openai_client, gemini_client=mock_gemini_client)
+    hybrid = HybridAIClient(
+        openai_client=mock_openai_client, gemini_client=mock_gemini_client
+    )
 
     messages = [{"role": "user", "content": "Hello from gemini fallback."}]
     hybrid.create("gemini-1.5-flash", messages)
@@ -73,17 +83,19 @@ def test_hybrid_client_gemini_model_fallback_error(mock_openai_client, mock_gemi
     assert called_kwargs["model"] == "gpt-4o"
 
 
-def test_hybrid_client_claude_model_success(mock_openai_client, mock_gemini_client, mock_anthropic_client):
+def test_hybrid_client_claude_model_success(
+    mock_openai_client, mock_gemini_client, mock_anthropic_client
+):
     """Claude-3-Sonnetモデルの正常系テスト"""
     hybrid = HybridAIClient(
         openai_client=mock_openai_client,
         gemini_client=mock_gemini_client,
-        anthropic_client=mock_anthropic_client
+        anthropic_client=mock_anthropic_client,
     )
 
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Hello from Claude."}
+        {"role": "user", "content": "Hello from Claude."},
     ]
     response = hybrid.create("claude-3-sonnet-20240229", messages)
 
@@ -104,14 +116,16 @@ def test_hybrid_client_claude_model_success(mock_openai_client, mock_gemini_clie
     assert called_args["messages"][0]["content"] == "Hello from Claude."
 
 
-def test_hybrid_client_claude_model_fallback(mock_openai_client, mock_gemini_client, mock_anthropic_client):
+def test_hybrid_client_claude_model_fallback(
+    mock_openai_client, mock_gemini_client, mock_anthropic_client
+):
     """Claudeが失敗した場合のフォールバックテスト"""
     mock_anthropic_client.messages.create.side_effect = Exception("Claude error")
 
     hybrid = HybridAIClient(
         openai_client=mock_openai_client,
         gemini_client=mock_gemini_client,
-        anthropic_client=mock_anthropic_client
+        anthropic_client=mock_anthropic_client,
     )
 
     messages = [{"role": "user", "content": "Hello from Claude fallback."}]
@@ -124,12 +138,14 @@ def test_hybrid_client_claude_model_fallback(mock_openai_client, mock_gemini_cli
     assert called_args["model"] == "gpt-4o"
 
 
-def test_hybrid_client_claude_model_not_configured(mock_openai_client, mock_gemini_client):
+def test_hybrid_client_claude_model_not_configured(
+    mock_openai_client, mock_gemini_client
+):
     """Claudeクライアントが設定されていない場合のテスト"""
     hybrid = HybridAIClient(
         openai_client=mock_openai_client,
         gemini_client=mock_gemini_client,
-        anthropic_client=None
+        anthropic_client=None,
     )
 
     messages = [{"role": "user", "content": "Hello without Claude."}]
@@ -148,13 +164,13 @@ def test_message_format_conversion():
     hybrid = HybridAIClient(
         openai_client=MagicMock(),
         gemini_client=MagicMock(),
-        anthropic_client=MagicMock()
+        anthropic_client=MagicMock(),
     )
 
     messages = [
         {"role": "system", "content": "System message"},
         {"role": "user", "content": "User message"},
-        {"role": "assistant", "content": "Assistant message"}
+        {"role": "assistant", "content": "Assistant message"},
     ]
 
     converted = hybrid._convert_messages_for_anthropic(messages)

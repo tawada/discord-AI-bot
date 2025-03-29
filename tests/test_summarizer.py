@@ -24,13 +24,16 @@ def test_summarize_webpage_for_youtube(mocker):
 
 def test_summarize_webpage_normal_site(mocker):
     test_url = "https://example.com"
-    html_content = "<html><head><title>Example Domain</title></head><body>Hello</body></html>"
+    html_content = (
+        "<html><head><title>Example Domain</title></head><body>Hello</body></html>"
+    )
 
     # requests.get のモック
     def mock_get(url, headers):
         class MockResponse:
             status_code = 200
             text = html_content
+
         return MockResponse()
 
     mocker.patch("requests.get", side_effect=mock_get)
@@ -70,10 +73,12 @@ def test_summarize_x(mocker):
     <body>Some tweet content</body>
     </html>
     """
+
     def mock_get(url, headers):
         class MockResponse:
             status_code = 200
             text = mock_html
+
         return MockResponse()
 
     mocker.patch("requests.get", side_effect=mock_get)

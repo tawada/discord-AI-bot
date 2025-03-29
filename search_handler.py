@@ -1,7 +1,7 @@
-from loguru import logger
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from duckduckgo_search import DDGS
+from loguru import logger
 
 
 def search_and_summarize(user_question: str, ai_client: Any, text_model: str) -> str:
@@ -30,15 +30,11 @@ def search_and_summarize(user_question: str, ai_client: Any, text_model: str) ->
     logger.info(f"Searching for: {query}")
     # DuckDuckGo で検索
     with DDGS() as ddgs:
-        results = list(ddgs.text(
-            keywords=query,
-            region='jp-jp',
-            max_results=10
-        ))
+        results = list(ddgs.text(keywords=query, region="jp-jp", max_results=10))
 
     if not results:
         return "検索結果が見つかりませんでした。"
-    
+
     # 検索結果をまとめる
     combined_text = f"{results}"
 

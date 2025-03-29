@@ -1,8 +1,8 @@
-from loguru import logger
 from typing import Any, Callable, Dict, List, Tuple
 
 import openai
 from anthropic import Anthropic
+from loguru import logger
 
 from config import load_config
 
@@ -26,13 +26,12 @@ class HybridAIClient:
         self.chat = self
         self.completions = self
 
-    def _convert_messages_for_anthropic(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    def _convert_messages_for_anthropic(
+        self, messages: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
         """Convert OpenAI message format to Anthropic format.
         Excludes system messages as they are handled separately."""
-        role_mapping = {
-            "user": "user",
-            "assistant": "assistant"
-        }
+        role_mapping = {"user": "user", "assistant": "assistant"}
         return [
             {"role": role_mapping[msg["role"]], "content": msg["content"]}
             for msg in messages
@@ -49,12 +48,14 @@ class HybridAIClient:
     def _create_with_anthropic(self, model: str, messages: List[Dict[str, str]]) -> Any:
         """Anthropicのモデルを使用してレスポンスを生成"""
         anthropic_messages = self._convert_messages_for_anthropic(messages)
-        system_message = next((msg["content"] for msg in messages if msg["role"] == "system"), None)
+        system_message = next(
+            (msg["content"] for msg in messages if msg["role"] == "system"), None
+        )
         response = self.anthropic_client.messages.create(
             model=model,
             max_tokens=1024,
             messages=anthropic_messages,
-            system=system_message
+            system=system_message,
         )
         return self._convert_anthropic_response(response)
 
@@ -67,18 +68,19 @@ class HybridAIClient:
 
     def _convert_anthropic_response(self, response: Any) -> Any:
         """AnthropicのレスポンスをOpenAI形式に変換"""
-        message = type('Message', (), {
-            'content': response.content[0].text,
-            'role': 'assistant'
-        })
-        choice = type('Choice', (), {'message': message})
-        return type('AnthropicResponse', (), {'choices': [choice]})
+        message = type(
+            "Message", (), {"content": response.content[0].text, "role": "assistant"}
+        )
+        choice = type("Choice", (), {"message": message})
+        return type("AnthropicResponse", (), {"choices": [choice]})
 
     def _get_fallback_response(self, messages: List[Dict[str, str]]) -> Any:
         """フォールバック用のレスポンスを生成"""
         return self._create_with_openai(self.openai_models[0], messages)
 
-    def _select_model_handler(self, model: str) -> Tuple[Callable[[str, List[Dict[str, str]]], Any], str]:
+    def _select_model_handler(
+        self, model: str
+    ) -> Tuple[Callable[[str, List[Dict[str, str]]], Any], str]:
         """モデルに応じたハンドラーを選択"""
         if model in self.openai_models:
             return self._create_with_openai, "openai"
@@ -91,7 +93,7 @@ class HybridAIClient:
         handler: Callable[[str, List[Dict[str, str]]], Any],
         model: str,
         messages: List[Dict[str, str]],
-        provider: str
+        provider: str,
     ) -> Any:
         """ハンドラーを実行し、失敗時はフォールバック"""
         try:
@@ -102,15 +104,15 @@ class HybridAIClient:
 
     def create(self, model: str, messages: List[Dict[str, str]]) -> Any:
         """指定されたモデルを使用してレスポンスを生成
-        
+
         各モデルでエラーが発生した場合は、OpenAIのモデルにフォールバックする
         """
         try:
             LOG_LEN = 20
             for message in messages:
-                log_msg = message['content'][:LOG_LEN]
+                log_msg = message["content"][:LOG_LEN]
                 if isinstance(log_msg, str):
-                    log_msg = log_msg.replace('\n', ' ')
+                    log_msg = log_msg.replace("\n", " ")
                 logger.info(f"LLM IN: {log_msg}")
             handler, provider = self._select_model_handler(model)
             response = self._execute_with_fallback(handler, model, messages, provider)
@@ -126,7 +128,7 @@ class HybridAIClient:
         try:
             response = self.create(model, messages)
             # Assuming the model returns a confidence score or similar metric
-            confidence_score = getattr(response.choices[0].message, 'confidence', 1.0)
+            confidence_score = getattr(response.choices[0].message, "confidence", 1.0)
             return confidence_score < 0.5  # Threshold for insufficient knowledge
         except Exception as e:
             logger.exception(e)
@@ -137,8 +139,12 @@ def load_ai_client():
     config = load_config()
     gemini_client = openai.OpenAI(
         api_key=config.gemini_api_key,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     )
     openai_client = openai.OpenAI(api_key=config.openai_api_key)
-    anthropic_client = Anthropic(api_key=config.anthropic_api_key) if config.anthropic_api_key else None
+    anthropic_client = (
+        Anthropic(api_key=config.anthropic_api_key)
+        if config.anthropic_api_key
+        else None
+    )
     return HybridAIClient(openai_client, gemini_client, anthropic_client)

@@ -1,5 +1,5 @@
 import dataclasses
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -14,13 +14,16 @@ def mock_discord_setup():
     テスト実行前に、discord_client 内の config/ai_client を
     すべてモック化するフィクスチャ。
     """
-    with patch("discord_client.config", MagicMock(
-        # テスト中に参照される設定だけ用意すればOK
-        role_prompt="Mocked role prompt",
-        role_name="Mocked role name",
-        target_channnel_ids=[12345],
-        discord_api_key="dummy"
-    )):
+    with patch(
+        "discord_client.config",
+        MagicMock(
+            # テスト中に参照される設定だけ用意すればOK
+            role_prompt="Mocked role prompt",
+            role_name="Mocked role name",
+            target_channnel_ids=[12345],
+            discord_api_key="dummy",
+        ),
+    ):
         with patch("discord_client.ai_client", MagicMock()) as mock_ai:
             yield mock_ai
 
@@ -75,7 +78,9 @@ def test_search_and_summarize_success(mock_ai_client, mock_ddgs):
         MagicMock(message=MagicMock(content="Dummy AI summary"))
     ]
 
-    result = search_and_summarize("Python の概要を教えて", discord_client.ai_client, discord_client.text_model)
+    result = search_and_summarize(
+        "Python の概要を教えて", discord_client.ai_client, discord_client.text_model
+    )
     assert "Dummy AI summary" in result  # 要約結果が返ってくる
 
     # DuckDuckGo の検索が呼ばれているかを確認
@@ -95,7 +100,11 @@ def test_search_and_summarize_no_results(mock_ai_client):
             MagicMock(message=MagicMock(content="No query found"))
         ]
 
-        result = search_and_summarize("何もヒットしないテスト", discord_client.ai_client, discord_client.text_model)
+        result = search_and_summarize(
+            "何もヒットしないテスト",
+            discord_client.ai_client,
+            discord_client.text_model,
+        )
         assert "検索結果が見つかりませんでした" in result
 
 
@@ -110,8 +119,14 @@ async def test_get_reply_message():
         mock_create.return_value.choices = [
             MagicMock(message=MagicMock(content="テスト応答"))
         ]
-        
-        result = await discord_client.process_message(mock_message, discord_client.history, discord_client.ai_client, discord_client.text_model, discord_client.config)
+
+        result = await discord_client.process_message(
+            mock_message,
+            discord_client.history,
+            discord_client.ai_client,
+            discord_client.text_model,
+            discord_client.config,
+        )
         assert "テスト応答" in result
 
 
@@ -130,10 +145,21 @@ async def test_get_reply_message_with_insufficient_knowledge(mock_ai_client, moc
         ]
 
         # Mock the search and summarize function
-        with patch("message_handler.search_and_summarize", return_value="検索結果の要約") as mock_search:
-            result = await discord_client.process_message(mock_message, discord_client.history, discord_client.ai_client, discord_client.text_model, discord_client.config)
+        with patch(
+            "message_handler.search_and_summarize", return_value="検索結果の要約"
+        ) as mock_search:
+            result = await discord_client.process_message(
+                mock_message,
+                discord_client.history,
+                discord_client.ai_client,
+                discord_client.text_model,
+                discord_client.config,
+            )
             assert "テスト応答" in result
-            mock_search.assert_called_once_with("テストメッセージ", discord_client.ai_client, discord_client.text_model)
+            mock_search.assert_called_once_with(
+                "テストメッセージ", discord_client.ai_client, discord_client.text_model
+            )
+
 
 @pytest.mark.asyncio
 async def test_send_messages():
@@ -144,7 +170,7 @@ async def test_send_messages():
     long_message = "a" * 2500  # 2000文字を超えるメッセージ
 
     await discord_client.send_messages(mock_channel, long_message)
-    
+
     # 2回に分けて送信されることを確認
     assert mock_channel.send.call_count == 2
     # 最初の送信が2000文字
@@ -158,7 +184,7 @@ async def test_on_message_ignore_bot():
     """ボット自身のメッセージは無視されることを確認"""
     mock_message = MagicMock()
     mock_message.author = discord_client.client.user
-    
+
     with patch("message_handler.process_message") as mock_process:
         await discord_client.on_message(mock_message)
         mock_process.assert_not_called()

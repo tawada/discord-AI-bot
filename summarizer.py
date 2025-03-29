@@ -1,7 +1,6 @@
-from loguru import logger
-
 import requests
 from bs4 import BeautifulSoup
+from loguru import logger
 
 import functions
 
@@ -52,7 +51,7 @@ def summarize_youtube(url):
     idx_e = html.find("</title>")
     if idx_s == -1 or idx_e == -1:
         return "Unknown Title"
-    title = html[idx_s + 7: idx_e]
+    title = html[idx_s + 7 : idx_e]
     logger.debug(f"Title: {title}")
     return "This youtube video is " + title
 
@@ -79,8 +78,7 @@ def summarize_from_meta_tags(meta_tags, ai_client):
       - 最後に "This is a summary of the webpage: ..." と連結して返す
     """
     property_handlers = {
-        "og:image": lambda meta: 
-            summarize_image(meta.get("content"), ai_client),
+        "og:image": lambda meta: summarize_image(meta.get("content"), ai_client),
         "og:title": lambda meta: str(meta),
         "og:description": lambda meta: str(meta),
     }
@@ -107,7 +105,7 @@ def summarize_image(url, ai_client):
             "content": [
                 {"type": "text", "text": "Summarize the image."},
                 {"type": "image_url", "image_url": {"url": url}},
-            ]
+            ],
         },
     ]
     try:
@@ -144,7 +142,7 @@ def extract_text_from_html(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
     # 必要に応じて抽出するタグを列挙
-    content_tags = ['title', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+    content_tags = ["title", "p", "h1", "h2", "h3", "h4", "h5", "h6"]
     extracted_texts = []
 
     for tag in content_tags:
