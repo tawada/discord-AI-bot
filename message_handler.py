@@ -17,61 +17,130 @@ async def get_reply_message(
     config: Any,
     optional_messages: List[Dict[str, str]] = [],
 ) -> str:
-    """ユーザーのメッセージに対して、LLMによる返信を取得する"""
+    """ユーザーのメッセージに対して、LLMによる返信を取得する
+    
+    Args:
+        message: Discordのメッセージオブジェクト
+        history: 会話履歴
+        ai_client: AI APIクライアント
+        text_model: 使用するモデル名
+        config: ボット設定
+        optional_messages: 追加のコンテキスト情報
+        
+    Returns:
+        str: 整形されたボット応答
+    """
     user_message = message.content
     user_name = message.author.name
 
+    # 会話履歴を取得
     messages = history.get_messages()
 
-    # ロールプロンプトを system として追加
+    # システムプロンプトを追加
     messages.append({"role": "system", "content": config.role_prompt})
-    # ユーザーからのメッセージ
-    messages.append({"role": "user", "content": user_name + ":\n" + user_message})
-    # LLMの知識不足を判定
-    if (
-        ai_client.is_knowledge_insufficient(text_model, messages)
-        and not optional_messages
-    ):
+    
+    # ユーザーメッセージを追加
+    messages.append({"role": "user", "content": f"{user_name}:\n{user_message}"})
+    
+    # 知識が不足していると判断された場合に検索を実行
+    if ai_client.is_knowledge_insufficient(text_model, messages) and not optional_messages:
         logger.info("LLMの知識が不足しています。外部情報を検索します。")
         summary = search_and_summarize(user_message, ai_client, text_model)
-        optional_messages.append(
-            {
-                "role": "system",
-                "content": f"「{user_message}」の検索結果要約:\n{summary}",
-            }
-        )
+        optional_messages.append({
+            "role": "system",
+            "content": f"「{user_message}」の検索結果要約:\n{summary}",
+        })
 
-    # optional_messages があれば追記
+    # 追加情報があれば会話コンテキストに追加
     if optional_messages:
         messages.extend(optional_messages)
-    # アシスタント応答
-    messages.append({"role": "assistant", "content": config.role_name + ":\n"})
+        
+    # アシスタント応答のテンプレートを追加
+    messages.append({"role": "assistant", "content": f"{config.role_name}:\n"})
 
+    # AIによる応答生成
+    bot_reply_message = await generate_ai_response(ai_client, text_model, messages)
+    
+    # 履歴に追加
+    update_history(history, user_name, user_message, bot_reply_message, optional_messages, config)
+    
+    # 応答の整形
+    validated_message = format_response(bot_reply_message, config)
+    
+    return validated_message
+
+
+async def generate_ai_response(ai_client: Any, model: str, messages: List[Dict[str, str]]) -> str:
+    """AIを使用して応答を生成
+    
+    Args:
+        ai_client: AI APIクライアント
+        model: 使用するモデル名
+        messages: メッセージ履歴
+        
+    Returns:
+        str: 生成された応答テキスト
+    """
     try:
         response = ai_client.chat.completions.create(
-            model=text_model,
+            model=model,
             messages=messages,
         )
-        bot_reply_message = response.choices[0].message.content
-        bot_reply_message = bot_reply_message.replace(
-            config.role_name + ":", ""
-        ).strip()
+        bot_reply = response.choices[0].message.content
+        # ロール名のプレフィックスを削除
+        if ":" in bot_reply:
+            bot_reply = bot_reply.split(":", 1)[1].strip()
+        return bot_reply
     except Exception as err:
-        logger.exception(err)
-        bot_reply_message = "Error: LLM API failed"
+        logger.exception(f"AI response generation failed: {err}")
+        return "Error: LLM API failed"
 
-    # 履歴に追加
-    history.add(GPTMessage("user", user_name + ":\n" + user_message))
+
+def update_history(
+    history: History, 
+    user_name: str, 
+    user_message: str, 
+    bot_reply: str, 
+    optional_messages: List[Dict[str, str]], 
+    config: Any
+) -> None:
+    """会話履歴を更新
+    
+    Args:
+        history: 履歴オブジェクト
+        user_name: ユーザー名
+        user_message: ユーザーメッセージ
+        bot_reply: ボットの応答
+        optional_messages: 追加のコンテキスト情報
+        config: ボット設定
+    """
+    # ユーザーメッセージを履歴に追加
+    history.add(GPTMessage("user", f"{user_name}:\n{user_message}"))
+    
+    # 追加情報を履歴に追加
     for optional_message in optional_messages:
         history.add(GPTMessage(optional_message["role"], optional_message["content"]))
-    history.add(GPTMessage("assistant", config.role_name + ":\n" + bot_reply_message))
+        
+    # ボット応答を履歴に追加
+    history.add(GPTMessage("assistant", f"{config.role_name}:\n{bot_reply}"))
 
+
+def format_response(response: str, config: Any) -> str:
+    """ボットの応答を整形
+    
+    Args:
+        response: 生の応答テキスト
+        config: ボット設定
+        
+    Returns:
+        str: 整形された応答テキスト
+    """
     # 括弧や空行を除去
-    validated_message = functions.remove_brackets_and_spaces(bot_reply_message)
-
-    # 2文以内・100文字以内に収める
+    validated_message = functions.remove_brackets_and_spaces(response)
+    
+    # 応答の長さを制限
     validated_message = functions.limit_sentences(validated_message, 2)
-
+    
     return validated_message
 
 
