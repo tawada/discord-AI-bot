@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import ConfigDict, Field
 from pydantic_settings import BaseSettings
 
 
@@ -14,9 +14,10 @@ class Settings(BaseSettings):
     role_prompt: str
     role_name: str
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = ConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
 
 
 def load_config():
