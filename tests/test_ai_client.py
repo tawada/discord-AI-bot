@@ -173,10 +173,10 @@ def test_message_format_conversion():
         {"role": "assistant", "content": "Assistant message"},
     ]
 
-    converted = hybrid._convert_messages_for_anthropic(messages)
-
-    assert len(converted) == 2  # システムメッセージは除外される
-    assert converted[0]["role"] == "user"
-    assert converted[0]["content"] == "User message"
-    assert converted[1]["role"] == "assistant"
-    assert converted[1]["content"] == "Assistant message"
+    # Anthropic形式に変換
+    converted_messages = hybrid.anthropic._convert_messages(messages)
+    assert len(converted_messages) == 2
+    assert converted_messages[0]["role"] == "user"
+    assert converted_messages[0]["content"] == "User message"
+    assert converted_messages[1]["role"] == "assistant"
+    assert converted_messages[1]["content"] == "Assistant message"

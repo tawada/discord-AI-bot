@@ -19,7 +19,7 @@ def test_summarize_webpage_for_youtube(mocker):
 
     mocker.patch("requests.get", side_effect=mock_get)
     summarized_text = summarizer.summarize_webpage(test_url, None)
-    assert summarized_text == "This youtube video is " + title
+    assert summarized_text == "YouTube動画: " + title
 
 
 def test_summarize_webpage_normal_site(mocker):
@@ -88,7 +88,7 @@ def test_summarize_x(mocker):
     ]
 
     result = summarizer.summarize_x(url, mock_ai_client)
-    assert "This is a summary of the webpage:" in result
+    assert "X投稿の要約" in result
     assert "Tweet description" in result
     assert "Image summary" in result
 
