@@ -154,40 +154,13 @@ async def process_message(
     """メッセージを処理し、必要な情報を収集して返信を生成する"""
     optional_messages = []
 
-    # 画像の処理
-    for attachment in message.attachments:
-        if not functions.is_image_attachment(attachment):
-            continue
-        try:
-            summarized_text = summarizer.summarize_image(attachment.url, ai_client)
-            logger.info(summarized_text[:50])
-            optional_messages.append(
-                {
-                    "role": "system",
-                    "content": "画像の要約:\n"
-                    + attachment.filename
-                    + "\n"
-                    + summarized_text,
-                }
-            )
-        except RuntimeError:
-            pass
 
-    # URLの処理
+    # 添付ファイルの処理
+    optional_messages = process_message_attachments(message, ai_client, optional_messages)
+
+    # メッセージ中にURLが含まれている場合の処理
     if functions.contains_url(message.content):
-        urls = functions.extract_urls(message.content)
-        try:
-            url = urls[0]
-            summarized_text = summarizer.summarize_webpage(url, ai_client)
-            logger.info(summarized_text[:50])
-            optional_messages.append(
-                {
-                    "role": "system",
-                    "content": "ページの要約:\n" + url + "\n" + summarized_text,
-                }
-            )
-        except RuntimeError:
-            pass
+        optional_messages = process_message_urls(message, ai_client, optional_messages)
 
     # 検索が必要な場合の処理
     if is_search_needed(message.content, ai_client, text_model):
@@ -219,3 +192,52 @@ async def send_messages(channel: discord.TextChannel, message: str) -> None:
 
     for short_message in short_messages:
         await channel.send(short_message)
+
+
+def process_message_attachments(
+    message: discord.Message,
+    ai_client: Any,
+    optional_messages: List[Dict[str, str]],
+) -> List[Dict[str, str]]:
+    """メッセージの添付ファイルを処理し、要約を生成"""
+    # 画像の処理
+    for attachment in message.attachments:
+        if not functions.is_image_attachment(attachment):
+            continue
+        try:
+            summarized_text = summarizer.summarize_image(attachment.url, ai_client)
+            logger.info(summarized_text[:50])
+            optional_messages.append(
+                {
+                    "role": "system",
+                    "content": "画像の要約:\n"
+                    + attachment.filename
+                    + "\n"
+                    + summarized_text,
+                }
+            )
+        except RuntimeError:
+            pass
+    return optional_messages
+
+
+def process_message_urls(
+    message: discord.Message,
+    ai_client: Any,
+    optional_messages: List[Dict[str, str]],
+) -> List[Dict[str, str]]:
+    """メッセージのURLを処理し、要約を生成"""
+    urls = functions.extract_urls(message.content)
+    try:
+        url = urls[0]
+        summarized_text = summarizer.summarize_webpage(url, ai_client)
+        logger.info(summarized_text[:50])
+        optional_messages.append(
+            {
+                "role": "system",
+                "content": "ページの要約:\n" + url + "\n" + summarized_text,
+            }
+        )
+    except RuntimeError:
+        pass
+    return optional_messages
