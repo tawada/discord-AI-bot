@@ -1,3 +1,4 @@
+import datetime
 from typing import Any, Dict, List
 
 import discord
@@ -158,6 +159,10 @@ async def process_message(
     # 添付ファイルの処理
     optional_messages = process_message_attachments(message, ai_client, optional_messages)
 
+    # メッセージ中にリアルタイム情報が含まれている場合の処理
+    if contains_real_time_info(message.content):
+        optional_messages = process_real_time_info(message.content, ai_client, optional_messages)
+
     # メッセージ中にURLが含まれている場合の処理
     if functions.contains_url(message.content):
         optional_messages = process_message_urls(message, ai_client, optional_messages)
@@ -192,6 +197,32 @@ async def send_messages(channel: discord.TextChannel, message: str) -> None:
 
     for short_message in short_messages:
         await channel.send(short_message)
+
+
+def contains_real_time_info(message: str) -> bool:
+    """メッセージにリアルタイム情報が含まれているかをチェック"""
+    return any(keyword in message for keyword in ["今日", "明日", "曜日", "何時", "時間", "今", "いつ", "いま", "なんじ"])
+
+
+def process_real_time_info(
+    message: str,
+    ai_client: Any,
+    optional_messages: List[Dict[str, str]],
+) -> List[Dict[str, str]]:
+    """メッセージにリアルタイム情報が含まれている場合の処理"""
+    try:
+        optional_messages.append(
+            {
+                "role": "system",
+                "content": (
+                    "Current date and time (JST): \n"
+                    f"{(datetime.datetime.now() + datetime.timedelta(hours=9)).strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+            }
+        )
+    except RuntimeError:
+        pass
+    return optional_messages
 
 
 def process_message_attachments(
