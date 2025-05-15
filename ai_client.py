@@ -118,7 +118,7 @@ class HybridAIClient:
         self.anthropic_models = self.anthropic.models if self.anthropic else []
         
         # ログ出力用の設定
-        self.LOG_LEN = 20
+        self.LOG_LEN = 40
 
     def _get_fallback_response(self, messages: List[Dict[str, str]]) -> Any:
         """フォールバック用のレスポンスを生成"""
