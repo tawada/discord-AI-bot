@@ -4,6 +4,10 @@ from loguru import logger
 from typing import Dict, Any, List, Optional
 
 import functions
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.chains import LLMChain
+import os
 
 # グローバル変数の代わりに定数として定義
 DEFAULT_TEXT_MODEL = "gemini-2.0-flash"
@@ -228,11 +232,11 @@ def extract_text_from_html(html: str) -> str:
 
 
 def summarize_with_ai(text: str, ai_client: Any, text_model: str = DEFAULT_TEXT_MODEL) -> str:
-    """AIでテキストを要約する
+    """AIでテキストを要約する（LangChainを利用）
 
     Args:
         text: 要約するテキスト
-        ai_client: AI APIクライアント
+        ai_client: AI APIクライアント（未使用、互換のため残す）
         text_model: 要約に使用するモデル名
 
     Returns:
@@ -240,17 +244,23 @@ def summarize_with_ai(text: str, ai_client: Any, text_model: str = DEFAULT_TEXT_
     """
     if not text.strip():
         return "要約するテキストがありません。"
-        
-    messages = [
-        {"role": "user", "content": text},
-        {"role": "system", "content": "このウェブページの内容を日本語で簡潔に要約してください。"},
-    ]
+
+    import os
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    if not openai_api_key:
+        return "OpenAI APIキーが設定されていません。"
+    from langchain.chat_models import ChatOpenAI
+    from langchain.prompts import ChatPromptTemplate
+    from langchain.chains import LLMChain
+    llm = ChatOpenAI(model=text_model, openai_api_key=openai_api_key)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "このウェブページの内容を日本語で簡潔に要約してください。"),
+        ("user", "{input_text}")
+    ])
+    chain = LLMChain(llm=llm, prompt=prompt)
     try:
-        result = ai_client.chat.completions.create(
-            model=text_model,
-            messages=messages,
-        )
-        return result.choices[0].message.content
+        result = chain.run({"input_text": text})
+        return result
     except Exception as err:
-        logger.exception(f"Error summarizing text with AI: {err}")
+        logger.exception(f"Error summarizing text with LangChain: {err}")
         raise RuntimeError(f"テキスト要約中にエラーが発生しました: {str(err)}")

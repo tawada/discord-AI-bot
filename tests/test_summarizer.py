@@ -22,13 +22,12 @@ def test_summarize_webpage_for_youtube(mocker):
     assert summarized_text == "YouTube動画: " + title
 
 
-def test_summarize_webpage_normal_site(mocker):
+def test_summarize_webpage_normal_site():
     test_url = "https://example.com"
     html_content = (
         "<html><head><title>Example Domain</title></head><body>Hello</body></html>"
     )
 
-    # requests.get のモック
     def mock_get(url, headers):
         class MockResponse:
             status_code = 200
@@ -36,16 +35,16 @@ def test_summarize_webpage_normal_site(mocker):
 
         return MockResponse()
 
-    mocker.patch("requests.get", side_effect=mock_get)
-
-    mock_ai_client = MagicMock()
-    mock_ai_client.chat.completions.create.return_value.choices = [
-        MagicMock(message=MagicMock(content="Dummy summary of example.com"))
-    ]
-
-    summarized_text = summarizer.summarize_webpage(test_url, mock_ai_client)
-    assert "Dummy summary of example.com" in summarized_text
-    mock_ai_client.chat.completions.create.assert_called_once()
+    with patch("requests.get", side_effect=mock_get):
+        with patch("langchain.chat_models.ChatOpenAI") as mock_chat_openai:
+            mock_chain = MagicMock()
+            mock_chain.run.return_value = "Dummy summary of example.com"
+            mock_chat_openai.return_value = MagicMock()
+            with patch("langchain.chains.LLMChain") as mock_llmchain:
+                mock_llmchain.return_value = mock_chain
+                summarized_text = summarizer.summarize_webpage(test_url, None)
+                assert "Dummy summary of example.com" in summarized_text
+                mock_chain.run.assert_called_once()
 
 
 def test_summarize_youtube_direct():
