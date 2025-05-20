@@ -245,13 +245,11 @@ def summarize_with_ai(text: str, ai_client: Any, text_model: str = DEFAULT_TEXT_
     if not text.strip():
         return "要約するテキストがありません。"
 
-    import os
-    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    from config import load_config
+    config = load_config()
+    openai_api_key = config.openai_api_key
     if not openai_api_key:
         return "OpenAI APIキーが設定されていません。"
-    from langchain.chat_models import ChatOpenAI
-    from langchain.prompts import ChatPromptTemplate
-    from langchain.chains import LLMChain
     llm = ChatOpenAI(model=text_model, openai_api_key=openai_api_key)
     prompt = ChatPromptTemplate.from_messages([
         ("system", "このウェブページの内容を日本語で簡潔に要約してください。"),
