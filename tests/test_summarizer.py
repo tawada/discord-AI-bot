@@ -36,11 +36,11 @@ def test_summarize_webpage_normal_site():
         return MockResponse()
 
     with patch("requests.get", side_effect=mock_get):
-        with patch("langchain.chat_models.ChatOpenAI") as mock_chat_openai:
+        with patch("summarizer.ChatOpenAI") as mock_chat_openai:
             mock_chain = MagicMock()
             mock_chain.run.return_value = "Dummy summary of example.com"
             mock_chat_openai.return_value = MagicMock()
-            with patch("langchain.chains.LLMChain") as mock_llmchain:
+            with patch("summarizer.LLMChain") as mock_llmchain:
                 mock_llmchain.return_value = mock_chain
                 summarized_text = summarizer.summarize_webpage(test_url, None)
                 assert "Dummy summary of example.com" in summarized_text

@@ -41,8 +41,8 @@ def mock_ddgs():
     with patch("search_handler.DDGS") as mock_ddgs_class:
         mock_ddgs_instance = MagicMock()
         mock_ddgs_instance.text.return_value = [
-            "Result 1: This is the first snippet.",
-            "Result 2: Another snippet.",
+            {"title": "Result 1", "body": "This is the first snippet.", "href": "https://example.com/1"},
+            {"title": "Result 2", "body": "Another snippet.", "href": "https://example.com/2"},
         ]
         mock_ddgs_class.return_value.__enter__.return_value = mock_ddgs_instance
         yield mock_ddgs_class
@@ -77,14 +77,18 @@ def test_search_and_summarize_success(mock_ai_client, mock_ddgs):
     mock_ai_client.return_value.choices = [
         MagicMock(message=MagicMock(content="Dummy AI summary"))
     ]
-
-    result = search_and_summarize(
-        "Python の概要を教えて", discord_client.ai_client, discord_client.text_model
-    )
-    assert "Dummy AI summary" in result  # 要約結果が返ってくる
-
-    # DuckDuckGo の検索が呼ばれているかを確認
-    mock_ddgs.assert_called_once()
+    # langchainのChatOpenAIとLLMChainをモック
+    with patch("langchain.chat_models.ChatOpenAI") as mock_chat_openai:
+        mock_chain = MagicMock()
+        mock_chain.run.return_value = "Dummy AI summary"
+        mock_chat_openai.return_value = MagicMock()
+        with patch("langchain.chains.LLMChain") as mock_llmchain:
+            mock_llmchain.return_value = mock_chain
+            result = search_and_summarize(
+                "Python の概要を教えて", discord_client.ai_client, discord_client.text_model
+            )
+            assert "Dummy AI summary" in result  # 要約結果が返ってくる
+            mock_ddgs.assert_called_once()
 
 
 def test_search_and_summarize_no_results(mock_ai_client):

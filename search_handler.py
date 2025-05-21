@@ -127,35 +127,38 @@ def format_search_results(results: List[Dict]) -> str:
 
 
 def summarize_search_results(results_text: str, query: str, ai_client: Any, text_model: str) -> str:
-    """検索結果をAIで要約
+    """検索結果をLangChainで要約
     
     Args:
         results_text: 整形された検索結果テキスト
         query: 元の検索クエリ
-        ai_client: AI APIクライアント
+        ai_client: AI APIクライアント（未使用、互換のため残す）
         text_model: 使用するAIモデル名
         
     Returns:
         str: 要約されたテキスト
     """
-    messages = [
-        {"role": "user", "content": results_text},
-        {
-            "role": "system",
-            "content": (
-                f"上記の検索結果に基づいて、ユーザの質問「{query}」に答えるための"
-                "簡潔な日本語要約を作成してください。"
-            ),
-        },
-    ]
+    if not results_text.strip():
+        return "要約する検索結果がありません。"
     try:
-        response = ai_client.chat.completions.create(
-            model=text_model,
-            messages=messages,
-        )
-        return response.choices[0].message.content
+        from config import load_config
+        from langchain.chat_models import ChatOpenAI
+        from langchain.prompts import ChatPromptTemplate
+        from langchain.chains import LLMChain
+        config = load_config()
+        openai_api_key = config.openai_api_key
+        if not openai_api_key:
+            return "OpenAI APIキーが設定されていません。"
+        llm = ChatOpenAI(model=text_model, openai_api_key=openai_api_key)
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", f"以下の検索結果に基づいて、ユーザの質問『{query}』に答えるための簡潔な日本語要約を作成してください。"),
+            ("user", "{input_text}")
+        ])
+        chain = LLMChain(llm=llm, prompt=prompt)
+        result = chain.run({"input_text": results_text})
+        return result
     except Exception as e:
-        logger.exception(f"Summarization failed: {e}")
+        logger.exception(f"LangChainによる検索要約失敗: {e}")
         return "検索の要約時にエラーが発生しました。"
 
 
