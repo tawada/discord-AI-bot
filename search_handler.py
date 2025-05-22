@@ -45,34 +45,25 @@ def search_and_summarize(user_question: str, ai_client: Any, text_model: str) ->
 
 
 def extract_search_query(user_question: str, ai_client: Any, text_model: str) -> str:
-    """ユーザーの質問から検索クエリを抽出
-    
-    Args:
-        user_question: ユーザーからの質問
-        ai_client: AI APIクライアント
-        text_model: 使用するAIモデル名
-        
-    Returns:
-        str: 検索クエリ
-    """
-    messages = [
-        {"role": "user", "content": user_question},
-        {
-            "role": "system",
-            "content": (
-                f"上記のユーザの質問「{user_question}」に対して、"
-                "検索するべき単語を抽出してください。回答は単語のみで構いません。"
-            ),
-        },
-    ]
+    """ユーザーの質問から検索クエリを抽出（LangChain経由）"""
+    from langchain.prompts import ChatPromptTemplate
+    from langchain.chains import LLMChain
+    from config import load_config
+    config = load_config()
+    openai_api_key = config.openai_api_key
+    llm = ai_client.llms["openai"] if "openai" in ai_client.llms else None
+    if not llm:
+        return ""
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", f"上記のユーザの質問「{user_question}」に対して、検索するべき単語を抽出してください。回答は単語のみで構いません。"),
+        ("user", "{input_text}")
+    ])
+    chain = LLMChain(llm=llm, prompt=prompt)
     try:
-        response = ai_client.chat.completions.create(
-            model=text_model,
-            messages=messages,
-        )
-        return response.choices[0].message.content
+        result = chain.run({"input_text": user_question})
+        return result.strip()
     except Exception as e:
-        logger.exception(f"Failed to extract search query: {e}")
+        logger.exception(f"Failed to extract search query (LangChain): {e}")
         return ""
 
 
@@ -182,33 +173,23 @@ def is_search_needed(user_message: str, ai_client: Any, text_model: str) -> bool
 
 
 def ai_check_if_search_needed(user_message: str, ai_client: Any, text_model: str) -> bool:
-    """AIを使用して検索が必要かどうかをより高度に判断
-    
-    Args:
-        user_message: ユーザーからのメッセージ
-        ai_client: AI APIクライアント
-        text_model: 使用するAIモデル名
-        
-    Returns:
-        bool: 検索が必要な場合はTrue
-    """
-    messages = [
-        {"role": "user", "content": user_message},
-        {
-            "role": "system",
-            "content": (
-                '上記のユーザーの発言に適切に答えるためにインターネット検索が必要であれば True、不要であれば False を返してください。必ず "True" または "False" のいずれかのみを返してください。'
-            ),
-        },
-    ]
-
+    """AIを使用して検索が必要かどうかをLangChain経由で判断"""
+    from langchain.prompts import ChatPromptTemplate
+    from langchain.chains import LLMChain
+    from config import load_config
+    config = load_config()
+    openai_api_key = config.openai_api_key
+    llm = ai_client.llms["openai"] if "openai" in ai_client.llms else None
+    if not llm:
+        return False
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", '上記のユーザーの発言に適切に答えるためにインターネット検索が必要であれば True、不要であれば False を返してください。必ず "True" または "False" のいずれかのみを返してください。'),
+        ("user", "{input_text}")
+    ])
+    chain = LLMChain(llm=llm, prompt=prompt)
     try:
-        response = ai_client.chat.completions.create(
-            model=text_model,
-            messages=messages,
-        )
-        result = response.choices[0].message.content.strip()
+        result = chain.run({"input_text": user_message})
         return "True" in result
     except Exception as e:
-        logger.exception(f"AI check for search need failed: {e}")
+        logger.exception(f"AI check for search need failed (LangChain): {e}")
         return False

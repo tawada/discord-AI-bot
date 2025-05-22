@@ -151,16 +151,7 @@ def summarize_from_meta_tags(meta_tags: List, ai_client: Any) -> str:
 
 
 def summarize_image(url: str, ai_client: Any, image_model: str = DEFAULT_IMAGE_MODEL) -> str:
-    """画像を要約する
-
-    Args:
-        url: 画像のURL
-        ai_client: AI APIクライアント
-        image_model: 画像分析に使用するモデル名
-
-    Returns:
-        str: 画像の要約
-    """
+    """画像を要約する（LangChain経由）"""
     messages = [
         {
             "role": "user",
@@ -172,7 +163,7 @@ def summarize_image(url: str, ai_client: Any, image_model: str = DEFAULT_IMAGE_M
     ]
     try:
         summarized_text = (
-            ai_client.chat.completions.create(
+            ai_client.create(
                 model=image_model,
                 messages=messages,
             )

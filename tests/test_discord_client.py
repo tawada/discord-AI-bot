@@ -1,39 +1,39 @@
 import dataclasses
 from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
-
 import discord_client
 from message_history import GPTMessage, History
 from search_handler import search_and_summarize
+from ai_client import HybridAIClient
+from config import load_config
 
+def make_openai_like_response(content="テスト応答", role="assistant"):
+    class Message:
+        def __init__(self, content):
+            self.content = content
+            self.role = role
+    class Choice:
+        def __init__(self, message):
+            self.message = message
+    class Response:
+        def __init__(self, choices):
+            self.choices = choices
+    return Response([Choice(Message(content))])
 
 @pytest.fixture(autouse=True)
-def mock_discord_setup():
-    """
-    テスト実行前に、discord_client 内の config/ai_client を
-    すべてモック化するフィクスチャ。
-    """
-    with patch(
-        "discord_client.config",
-        MagicMock(
-            # テスト中に参照される設定だけ用意すればOK
-            role_prompt="Mocked role prompt",
-            role_name="Mocked role name",
-            target_channnel_ids=[12345],
-            discord_api_key="dummy",
-        ),
-    ):
-        with patch("discord_client.ai_client", MagicMock()) as mock_ai:
-            yield mock_ai
+def patch_discord_ai_client(monkeypatch):
+    ai_client = HybridAIClient()
+    monkeypatch.setattr(discord_client, "ai_client", ai_client)
+    with patch.object(ai_client, "create", side_effect=lambda *a, **kw: make_openai_like_response()):
+        yield
 
-
-@pytest.fixture
-def mock_ai_client():
-    """ai_client.chat.completions.create をモックする"""
-    with patch("discord_client.ai_client.chat.completions.create") as mock_create:
-        yield mock_create
-
+@pytest.fixture(autouse=True)
+def patch_llmchain():
+    with patch("langchain.chains.LLMChain") as mock_llmchain:
+        mock_chain = MagicMock()
+        mock_chain.run.return_value = "Dummy AI summary"
+        mock_llmchain.return_value = mock_chain
+        yield
 
 @pytest.fixture
 def mock_ddgs():
@@ -47,6 +47,21 @@ def mock_ddgs():
         mock_ddgs_class.return_value.__enter__.return_value = mock_ddgs_instance
         yield mock_ddgs_class
 
+@pytest.fixture(autouse=True)
+def patch_ddgs():
+    with patch("search_handler.DDGS") as mock_ddgs_class:
+        mock_ddgs_instance = MagicMock()
+        mock_ddgs_instance.text.return_value = [
+            {"title": "Result 1", "body": "This is the first snippet.", "href": "https://example.com/1"},
+            {"title": "Result 2", "body": "Another snippet.", "href": "https://example.com/2"},
+        ]
+        mock_ddgs_class.return_value.__enter__.return_value = mock_ddgs_instance
+        yield
+
+@pytest.fixture(autouse=True)
+def patch_discord_config(monkeypatch):
+    monkeypatch.setattr(discord_client, "config", load_config())
+    yield
 
 def test_history_add_and_get_messages():
     history = History(num_output=3)
@@ -68,15 +83,11 @@ def test_history_add_and_get_messages():
     assert messages[2]["role"] == "user"
 
 
-def test_search_and_summarize_success(mock_ai_client, mock_ddgs):
+def test_search_and_summarize_success(mock_ddgs):
     """
     search_and_summarize が正常に動作して DuckDuckGo と ai_client の結果を用いて
     要約を返すかをテスト
     """
-    # ai_client から返ってくるダミーのレスポンスを用意
-    mock_ai_client.return_value.choices = [
-        MagicMock(message=MagicMock(content="Dummy AI summary"))
-    ]
     # langchainのChatOpenAIとLLMChainをモック
     with patch("langchain.chat_models.ChatOpenAI") as mock_chat_openai:
         mock_chain = MagicMock()
@@ -91,7 +102,7 @@ def test_search_and_summarize_success(mock_ai_client, mock_ddgs):
             mock_ddgs.assert_called_once()
 
 
-def test_search_and_summarize_no_results(mock_ai_client):
+def test_search_and_summarize_no_results():
     """
     DuckDuckGo で結果が一つも得られなかった場合にメッセージを返すか
     """
@@ -99,10 +110,6 @@ def test_search_and_summarize_no_results(mock_ai_client):
         mock_ddgs_instance = MagicMock()
         mock_ddgs_instance.text.return_value = []
         mock_ddgs_class.return_value.__enter__.return_value = mock_ddgs_instance
-
-        mock_ai_client.return_value.choices = [
-            MagicMock(message=MagicMock(content="No query found"))
-        ]
 
         result = search_and_summarize(
             "何もヒットしないテスト",
@@ -119,23 +126,18 @@ async def test_get_reply_message():
     mock_message.content = "テストメッセージ"
     mock_message.author.name = "テストユーザー"
 
-    with patch("discord_client.ai_client.chat.completions.create") as mock_create:
-        mock_create.return_value.choices = [
-            MagicMock(message=MagicMock(content="テスト応答"))
-        ]
-
-        result = await discord_client.process_message(
-            mock_message,
-            discord_client.history,
-            discord_client.ai_client,
-            discord_client.text_model,
-            discord_client.config,
-        )
-        assert "テスト応答" in result
+    result = await discord_client.process_message(
+        mock_message,
+        discord_client.history,
+        discord_client.ai_client,
+        discord_client.text_model,
+        discord_client.config,
+    )
+    assert "テスト応答" in result
 
 
 @pytest.mark.asyncio
-async def test_get_reply_message_with_insufficient_knowledge(mock_ai_client, mock_ddgs):
+async def test_get_reply_message_with_insufficient_knowledge(mock_ddgs):
     """Test get_reply_message when LLM knowledge is insufficient"""
     mock_message = MagicMock()
     mock_message.content = "テストメッセージ"
@@ -143,11 +145,6 @@ async def test_get_reply_message_with_insufficient_knowledge(mock_ai_client, moc
 
     # Mock the knowledge insufficiency check to return True
     with patch("discord_client.ai_client.is_knowledge_insufficient", return_value=True):
-        # Mock the AI client response
-        mock_ai_client.return_value.choices = [
-            MagicMock(message=MagicMock(content="テスト応答"))
-        ]
-
         # Mock the search and summarize function
         with patch(
             "message_handler.search_and_summarize", return_value="検索結果の要約"

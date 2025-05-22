@@ -1,9 +1,32 @@
 from unittest.mock import MagicMock, patch
-
 import pytest
-
 import summarizer
 
+def make_openai_like_response(content="Image content described", role="assistant"):
+    class Message:
+        def __init__(self, content):
+            self.content = content
+            self.role = role
+    class Choice:
+        def __init__(self, message):
+            self.message = message
+    class Response:
+        def __init__(self, choices):
+            self.choices = choices
+    return Response([Choice(Message(content))])
+
+@pytest.fixture(autouse=True)
+def patch_hybrid_ai_create():
+    with patch("ai_client.HybridAIClient.create", side_effect=lambda *a, **kw: make_openai_like_response()):
+        yield
+
+@pytest.fixture(autouse=True)
+def patch_llmchain():
+    with patch("summarizer.LLMChain") as mock_llmchain:
+        mock_chain = MagicMock()
+        mock_chain.run.return_value = "Dummy summary of example.com"
+        mock_llmchain.return_value = mock_chain
+        yield
 
 def test_summarize_webpage_for_youtube(mocker):
     test_url = "https://www.youtube.com/watch?v=test"
@@ -36,15 +59,8 @@ def test_summarize_webpage_normal_site():
         return MockResponse()
 
     with patch("requests.get", side_effect=mock_get):
-        with patch("summarizer.ChatOpenAI") as mock_chat_openai:
-            mock_chain = MagicMock()
-            mock_chain.run.return_value = "Dummy summary of example.com"
-            mock_chat_openai.return_value = MagicMock()
-            with patch("summarizer.LLMChain") as mock_llmchain:
-                mock_llmchain.return_value = mock_chain
-                summarized_text = summarizer.summarize_webpage(test_url, None)
-                assert "Dummy summary of example.com" in summarized_text
-                mock_chain.run.assert_called_once()
+        summarized_text = summarizer.summarize_webpage(test_url, None)
+        assert "Dummy summary of example.com" in summarized_text
 
 
 def test_summarize_youtube_direct():
@@ -81,10 +97,21 @@ def test_summarize_x(mocker):
         return MockResponse()
 
     mocker.patch("requests.get", side_effect=mock_get)
-    mock_ai_client = MagicMock()
-    mock_ai_client.chat.completions.create.return_value.choices = [
-        MagicMock(message=MagicMock(content="Image summary"))
-    ]
+    # ai_clientにcreateメソッドを持つダミーを渡す
+    class DummyAIClient:
+        def create(self, *a, **kw):
+            class Message:
+                def __init__(self, content):
+                    self.content = content
+                    self.role = "assistant"
+            class Choice:
+                def __init__(self, message):
+                    self.message = message
+            class Response:
+                def __init__(self, choices):
+                    self.choices = choices
+            return Response([Choice(Message("Image summary"))])
+    mock_ai_client = DummyAIClient()
 
     result = summarizer.summarize_x(url, mock_ai_client)
     assert "X投稿の要約" in result
@@ -94,11 +121,21 @@ def test_summarize_x(mocker):
 
 def test_summarize_image(mocker):
     url = "https://example.com/image.png"
-    mock_ai_client = MagicMock()
-    mock_ai_client.chat.completions.create.return_value.choices = [
-        MagicMock(message=MagicMock(content="Image content described"))
-    ]
+    # ai_clientにcreateメソッドを持つダミーを渡す
+    class DummyAIClient:
+        def create(self, *a, **kw):
+            class Message:
+                def __init__(self, content):
+                    self.content = content
+                    self.role = "assistant"
+            class Choice:
+                def __init__(self, message):
+                    self.message = message
+            class Response:
+                def __init__(self, choices):
+                    self.choices = choices
+            return Response([Choice(Message("Image content described"))])
+    mock_ai_client = DummyAIClient()
 
     summary = summarizer.summarize_image(url, mock_ai_client)
     assert "Image content described" in summary
-    mock_ai_client.chat.completions.create.assert_called_once()

@@ -72,18 +72,9 @@ async def get_reply_message(
 
 
 async def generate_ai_response(ai_client: Any, model: str, messages: List[Dict[str, str]]) -> str:
-    """AIを使用して応答を生成
-    
-    Args:
-        ai_client: AI APIクライアント
-        model: 使用するモデル名
-        messages: メッセージ履歴
-        
-    Returns:
-        str: 生成された応答テキスト
-    """
+    """AIを使用して応答を生成（LangChain経由）"""
     try:
-        response = ai_client.chat.completions.create(
+        response = ai_client.create(
             model=model,
             messages=messages,
         )
