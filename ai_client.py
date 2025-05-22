@@ -53,7 +53,7 @@ class HybridAIClient:
                 if isinstance(log_msg, str):
                     log_msg = log_msg[:self.LOG_LEN].replace("\n", " ")
                 logger.info(f"LLM IN: {log_msg}")
-            result = llm.invoke(messages, model=model)
+            result = llm.invoke(messages)
             class Message:
                 def __init__(self, content):
                     self.content = content
