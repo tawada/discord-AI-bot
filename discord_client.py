@@ -17,7 +17,7 @@ ai_client = None
 
 # 利用可能なモデルのリスト
 AVAILABLE_MODELS = [
-    "gemini-2.0-flash",  # Gemini
+    "gemini-1.5-flash",  # Gemini
     "gpt-4o",  # OpenAI
     "claude-3-sonnet-20240229",  # Anthropic
 ]
@@ -44,7 +44,7 @@ def validate_model(model: str) -> str:
 
 
 # デフォルトのテキストモデル（初期化時に検証）
-text_model = validate_model("gemini-2.0-flash")
+text_model = validate_model("gemini-1.5-flash")
 
 history = History()
 

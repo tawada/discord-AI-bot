@@ -10,7 +10,7 @@ from langchain.chains import LLMChain
 import os
 
 # グローバル変数の代わりに定数として定義
-DEFAULT_TEXT_MODEL = "gemini-2.0-flash"
+DEFAULT_TEXT_MODEL = "gemini-1.5-flash"
 DEFAULT_IMAGE_MODEL = "gpt-4o"
 MAX_TEXT_LENGTH = 4096
 USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1"
