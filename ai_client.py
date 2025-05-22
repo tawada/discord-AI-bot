@@ -17,14 +17,14 @@ class HybridAIClient:
         self.gemini_api_key = config.gemini_api_key
         self.anthropic_api_key = config.anthropic_api_key
         self.openai_models = ["gpt-4o"]
-        self.gemini_models = ["gemini-2.0-flash", "gemini-1.5-flash"]
+        self.gemini_models = ["gemini-1.5-flash"]
         self.anthropic_models = ["claude-3-sonnet-20240229"]
         self.LOG_LEN = 40
         self.llms = {}
         if self.openai_api_key:
             self.llms["openai"] = ChatOpenAI(openai_api_key=self.openai_api_key)
         if self.gemini_api_key:
-            self.llms["gemini"] = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=self.gemini_api_key)
+            self.llms["gemini"] = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=self.gemini_api_key)
         if self.anthropic_api_key:
             try:
                 self.llms["anthropic"] = ChatAnthropic(
@@ -53,6 +53,9 @@ class HybridAIClient:
                 if isinstance(log_msg, str):
                     log_msg = log_msg[:self.LOG_LEN].replace("\n", " ")
                 logger.info(f"LLM IN: {log_msg}")
+            # LangChainのChatモデルはOpenAI互換のmessage dictリストを受け付けないため、
+            # 必要に応じて変換する（OpenAI形式→LangChain形式）
+            # ただしlangchain_openai, langchain_google_genai, langchain_anthropicはOpenAI形式をサポート
             result = llm.invoke(messages)
             class Message:
                 def __init__(self, content):
@@ -64,7 +67,7 @@ class HybridAIClient:
             class Response:
                 def __init__(self, choices):
                     self.choices = choices
-            content = result.content if hasattr(result, "content") else str(result)
+            content = getattr(result, "content", str(result))
             logger.info(f"LLM OUT: {content[:self.LOG_LEN]}")
             return Response([Choice(Message(content))])
         except Exception as err:
