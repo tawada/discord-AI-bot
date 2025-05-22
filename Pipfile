@@ -17,8 +17,10 @@ pytest-mock = "*"
 google-generativeai = "*"
 langchain-google-genai = "*"
 langchain = "*"
-langchain-community = "*"
-anthropic = "*"
+langchain-community = ">=0.0.36"
+langchain-anthropic = ">=0.1.7"
+anthropic = ">=0.3.0"
+langchain-openai = "*"
 
 [dev-packages]
 isort = "*"
