@@ -30,7 +30,7 @@ pytest = "*"
 pytest-mock = "*"
 pytest-cov = "*"
 coverage = "*"
-anthropic = "*"
+anthropic = "==0.38.0"
 
 [requires]
 python_version = "3.11"
