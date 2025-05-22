@@ -14,10 +14,11 @@ coverage = "*"
 pydantic-settings = "*"
 loguru = "*"
 pytest-mock = "*"
-langchain = "*"
-langchain-community = "*"
 google-generativeai = "*"
 langchain-google-genai = "*"
+langchain = "*"
+langchain-community = "*"
+anthropic = "*"
 
 [dev-packages]
 isort = "*"
@@ -27,6 +28,7 @@ pytest = "*"
 pytest-mock = "*"
 pytest-cov = "*"
 coverage = "*"
+anthropic = "*"
 
 [requires]
 python_version = "3.11"
