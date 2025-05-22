@@ -4,7 +4,7 @@ from loguru import logger
 from typing import Dict, Any, List, Optional
 
 import functions
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
 import os

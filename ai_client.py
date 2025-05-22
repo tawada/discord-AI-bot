@@ -2,8 +2,9 @@ from typing import Any, Dict, List
 from loguru import logger
 from config import load_config
 
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
+from langchain_anthropic import ChatAnthropic
 
 class HybridAIClient:
     """
@@ -26,8 +27,10 @@ class HybridAIClient:
             self.llms["gemini"] = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=self.gemini_api_key)
         if self.anthropic_api_key:
             try:
-                from langchain_community.chat_models import ChatAnthropic
-                self.llms["anthropic"] = ChatAnthropic(anthropic_api_key=self.anthropic_api_key)
+                self.llms["anthropic"] = ChatAnthropic(
+                    anthropic_api_key=self.anthropic_api_key,
+                    model_name="claude-3-sonnet-20240229"
+                )
             except ImportError:
                 logger.warning("anthropicパッケージが見つからないためAnthropic LLMは無効化されます")
         self.chat = self

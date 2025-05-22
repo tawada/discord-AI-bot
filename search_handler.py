@@ -133,7 +133,7 @@ def summarize_search_results(results_text: str, query: str, ai_client: Any, text
         return "要約する検索結果がありません。"
     try:
         from config import load_config
-        from langchain.chat_models import ChatOpenAI
+        from langchain_openai import ChatOpenAI
         from langchain.prompts import ChatPromptTemplate
         from langchain.chains import LLMChain
         config = load_config()
