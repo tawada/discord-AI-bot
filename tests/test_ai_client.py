@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from langchain_community.chat_models import ChatAnthropic
 
 from ai_client import HybridAIClient
 
