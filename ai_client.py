@@ -17,14 +17,13 @@ class HybridAIClient:
         self.gemini_api_key = config.gemini_api_key
         self.anthropic_api_key = config.anthropic_api_key
         self.openai_models = ["gpt-4o"]
-        self.gemini_models = ["gemini-1.5-flash"]
+        self.gemini_models = ["gemini-1.5-flash", "gemini-2.0-flash"]
         self.anthropic_models = ["claude-3-sonnet-20240229"]
         self.LOG_LEN = 40
         self.llms = {}
         if self.openai_api_key:
             self.llms["openai"] = ChatOpenAI(openai_api_key=self.openai_api_key)
-        if self.gemini_api_key:
-            self.llms["gemini"] = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=self.gemini_api_key)
+        # Gemini LLMは使用時に動的に作成（モデル名に応じて）
         if self.anthropic_api_key:
             try:
                 self.llms["anthropic"] = ChatAnthropic(
@@ -40,7 +39,13 @@ class HybridAIClient:
         if model in self.openai_models:
             return self.llms["openai"], "openai"
         if model in self.gemini_models:
-            return self.llms["gemini"], "gemini"
+            # Geminiモデルの場合、動的にモデルを変更
+            if model not in self.llms:
+                self.llms[model] = ChatGoogleGenerativeAI(
+                    model=model, 
+                    google_api_key=self.gemini_api_key
+                )
+            return self.llms[model], "gemini"
         if model in self.anthropic_models:
             return self.llms["anthropic"], "anthropic"
         raise ValueError(f"Unknown model: {model}")

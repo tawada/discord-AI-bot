@@ -18,6 +18,7 @@ ai_client = None
 # 利用可能なモデルのリスト
 AVAILABLE_MODELS = [
     "gemini-1.5-flash",  # Gemini
+    "gemini-2.0-flash",  # Gemini 2.0
     "gpt-4o",  # OpenAI
     "claude-3-sonnet-20240229",  # Anthropic
 ]
