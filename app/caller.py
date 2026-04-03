@@ -5,6 +5,7 @@ from discord import ui
 import logging
 
 from app import agent
+from app.agent import AgentResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,8 +41,9 @@ class YesNoView(ui.View):
         await interaction.response.edit_message(view=self)
 
         res = await self.caller.call_agent(answer, self.channel_id)
-        view = YesNoView(self.caller, self.channel_id) if _YESNO_PATTERN.search(res) else None
-        await interaction.followup.send(res, view=view)
+        view = YesNoView(self.caller, self.channel_id) if _YESNO_PATTERN.search(res.text) else None
+        files = [discord.File(f) for f in res.files]
+        await interaction.followup.send(res.text, view=view, files=files)
 
 
 class Caller:
@@ -82,8 +84,9 @@ class Caller:
             return
 
         res = await self.call_agent(message.content, message.channel.id)
-        view = YesNoView(self, message.channel.id) if _YESNO_PATTERN.search(res) else None
-        await message.channel.send(res, view=view)
+        view = YesNoView(self, message.channel.id) if _YESNO_PATTERN.search(res.text) else None
+        files = [discord.File(f) for f in res.files]
+        await message.channel.send(res.text, view=view, files=files)
 
 
     def ignore_message(self, message: discord.Message) -> bool:
@@ -98,7 +101,7 @@ class Caller:
         return False
 
 
-    async def call_agent(self, content: str, channel_id: int) -> str:
+    async def call_agent(self, content: str, channel_id: int) -> AgentResponse:
         """エージェントの呼び出し"""
         # --- ここでエージェントを呼び出す ---
         return await agent.call(content, channel_id)
