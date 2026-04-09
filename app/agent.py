@@ -15,16 +15,17 @@ _SYSTEM_PROMPT = (
     "あなたはDiscordボット経由でユーザーと会話しています。"
     "画像や動画ファイルを生成・取得した場合、応答テキスト中にそのファイルの絶対パスを必ず含めてください。"
     "パスが含まれていれば自動的にDiscordにアップロードされます。"
-    "対応形式: png, jpg, jpeg, gif, webp, bmp, mp4, mov, avi, webm, mkv"
+    "対応形式: png, jpg, jpeg, gif, webp, bmp, mp4, mov, avi, webm, mkv, wav, mp3, ogg, flac"
 )
 
 # ファイルパス検出パターン
-_FILE_PATH_PATTERN = re.compile(r"(/[\w./-]+\.(?:png|jpg|jpeg|gif|webp|bmp|mp4|mov|avi|webm|mkv))", re.IGNORECASE)
+_FILE_PATH_PATTERN = re.compile(r"(/[\w./-]+\.(?:png|jpg|jpeg|gif|webp|bmp|mp4|mov|avi|webm|mkv|wav|mp3|ogg|flac))", re.IGNORECASE)
 
 # 対応する拡張子
 _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 _VIDEO_EXTS = {".mp4", ".mov", ".avi", ".webm", ".mkv"}
-_MEDIA_EXTS = _IMAGE_EXTS | _VIDEO_EXTS
+_AUDIO_EXTS = {".wav", ".mp3", ".ogg", ".flac"}
+_MEDIA_EXTS = _IMAGE_EXTS | _VIDEO_EXTS | _AUDIO_EXTS
 
 
 @dataclass

@@ -1,3 +1,4 @@
+import os
 import re
 
 import discord
@@ -10,12 +11,49 @@ from app.agent import AgentResponse
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Discordのアップロード上限 (Nitroなしで25MB)
+_MAX_FILE_SIZE = 25 * 1024 * 1024
+
 # Yes/No質問の判定パターン
 _YESNO_PATTERN = re.compile(
     r"(よろしいですか|しますか|しましょうか|いいですか|ですか？|ますか？"
     r"|shall I|should I|do you want|would you like|yes or no|proceed\?)",
     re.IGNORECASE,
 )
+
+
+async def _send_response(send_func, res: AgentResponse, caller: "Caller", channel_id: int):
+    """AgentResponseをDiscordに送信する共通処理"""
+    valid_files = []
+    skipped = []
+    for f in res.files:
+        try:
+            size = os.path.getsize(f)
+        except OSError:
+            continue
+        if size <= _MAX_FILE_SIZE:
+            valid_files.append(discord.File(f))
+        else:
+            skipped.append(f"{os.path.basename(f)} ({size / 1024 / 1024:.1f}MB)")
+
+    text = res.text
+    if skipped:
+        text += "\n\n⚠ アップロード上限(25MB)を超えたファイル: " + ", ".join(skipped)
+
+    kwargs = {}
+    if valid_files:
+        kwargs["files"] = valid_files
+    if _YESNO_PATTERN.search(res.text):
+        kwargs["view"] = YesNoView(caller, channel_id)
+
+    try:
+        await send_func(text, **kwargs)
+    except discord.HTTPException as e:
+        logger.error("Failed to send message: %s", e)
+        try:
+            await send_func(f"⚠ メッセージの送信に失敗しました: {e.status} {e.text}")
+        except discord.HTTPException:
+            pass
 
 
 class YesNoView(ui.View):
@@ -41,9 +79,7 @@ class YesNoView(ui.View):
         await interaction.response.edit_message(view=self)
 
         res = await self.caller.call_agent(answer, self.channel_id)
-        view = YesNoView(self.caller, self.channel_id) if _YESNO_PATTERN.search(res.text) else None
-        files = [discord.File(f) for f in res.files]
-        await interaction.followup.send(res.text, view=view, files=files)
+        await _send_response(interaction.followup.send, res, self.caller, self.channel_id)
 
 
 class Caller:
@@ -84,9 +120,7 @@ class Caller:
             return
 
         res = await self.call_agent(message.content, message.channel.id)
-        view = YesNoView(self, message.channel.id) if _YESNO_PATTERN.search(res.text) else None
-        files = [discord.File(f) for f in res.files]
-        await message.channel.send(res.text, view=view, files=files)
+        await _send_response(message.channel.send, res, self, message.channel.id)
 
 
     def ignore_message(self, message: discord.Message) -> bool:
