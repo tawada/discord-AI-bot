@@ -8,6 +8,7 @@ import logging
 
 from app import agent
 from app.agent import AgentResponse
+from dotenv import dotenv_values
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -161,9 +162,18 @@ class YesNoView(ui.View):
 class Caller:
     """Discordボットの呼び出しクラス"""
 
+    ENV_FILE = "/workspace/discord-AI-bot/.env"
+
     def __init__(self):
         self.client = self.setup_client()
         self.target_channels: set[int] = set()
+
+    def reload_target_channels(self) -> set[int]:
+        """.envからTARGET_CHANNEL_IDSを再読み込みして反映する"""
+        env = dotenv_values(self.ENV_FILE)
+        raw = env.get("TARGET_CHANNEL_IDS", "")
+        self.target_channels = {int(ch.strip()) for ch in raw.split(",") if ch.strip()}
+        return self.target_channels
 
 
     def setup_client(self) -> discord.Client:
@@ -195,6 +205,13 @@ class Caller:
             logger.info("ignore message: ch=%s %s: %s", message.channel.id, message.author, message.content)
             return
 
+        # !reload: .envからターゲットチャンネルを再読み込み
+        if message.content.strip() == "!reload":
+            channels = self.reload_target_channels()
+            ch_list = ", ".join(str(c) for c in sorted(channels)) or "(なし)"
+            await message.channel.send(f"設定を再読み込みしました。\nターゲットチャンネル: {ch_list}")
+            return
+
         lock = _channel_locks.setdefault(message.channel.id, asyncio.Lock())
         async with lock:
             res = await self.call_agent(message.content, message.channel.id)
@@ -208,7 +225,7 @@ class Caller:
         # 対象チャンネルなら常に反応
         if message.channel.id in self.target_channels:
             return False
-        if not message.content.startswith(("!claude", "!reset", "!clear", "!forget")):
+        if not message.content.startswith(("!claude", "!reset", "!clear", "!forget", "!reload")):
             return True
         return False
 
