@@ -139,12 +139,23 @@ class YesNoView(ui.View):
         self.stop()
         for child in self.children:
             child.disabled = True
-        await interaction.response.edit_message(view=self)
+        # 即座にインタラクションに応答してタイムアウトを防ぐ（ロックの外で行う）
+        try:
+            await interaction.response.edit_message(view=self)
+        except discord.HTTPException:
+            try:
+                await interaction.response.defer()
+            except discord.HTTPException:
+                pass
+
+        # Claude呼び出しは時間がかかるのでチャンネルに直接送信
+        channel = interaction.channel
+        send_func = channel.send if channel else interaction.followup.send
 
         lock = _channel_locks.setdefault(self.channel_id, asyncio.Lock())
         async with lock:
             res = await self.caller.call_agent(answer, self.channel_id)
-            await _send_response(interaction.followup.send, res, self.caller, self.channel_id)
+            await _send_response(send_func, res, self.caller, self.channel_id)
 
 
 class Caller:
