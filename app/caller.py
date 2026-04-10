@@ -205,6 +205,19 @@ class Caller:
             logger.info("ignore message: ch=%s %s: %s", message.channel.id, message.author, message.content)
             return
 
+        # !help: コマンド一覧を表示
+        if message.content.strip() == "!help":
+            help_text = (
+                "**コマンド一覧**\n"
+                "`!claude <メッセージ>` — Claudeに質問する（対象チャンネル外で使用）\n"
+                "`!reset` / `!clear` / `!forget` — 会話の記憶をリセット\n"
+                "`!reload` — .envからターゲットチャンネル設定を再読み込み\n"
+                "`!help` — このヘルプを表示\n"
+                "\n対象チャンネルではプレフィックスなしで会話できます。"
+            )
+            await message.channel.send(help_text)
+            return
+
         # !reload: .envからターゲットチャンネルを再読み込み
         if message.content.strip() == "!reload":
             channels = self.reload_target_channels()
@@ -225,7 +238,7 @@ class Caller:
         # 対象チャンネルなら常に反応
         if message.channel.id in self.target_channels:
             return False
-        if not message.content.startswith(("!claude", "!reset", "!clear", "!forget", "!reload")):
+        if not message.content.startswith(("!claude", "!reset", "!clear", "!forget", "!reload", "!help")):
             return True
         return False
 
