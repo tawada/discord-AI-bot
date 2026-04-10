@@ -41,10 +41,17 @@ async def call(message: str, channel_id: int) -> AgentResponse:
     return await call_claudecode(message, channel_id)
 
 
-async def _run_claude(cmd: list[str]) -> tuple[str, str, int]:
+def _get_channel_workdir(channel_id: int) -> str:
+    """チャンネルごとの作業ディレクトリを取得・作成する"""
+    workdir = f"/workspace/channels/{channel_id}"
+    os.makedirs(workdir, exist_ok=True)
+    return workdir
+
+
+async def _run_claude(cmd: list[str], channel_id: int) -> tuple[str, str, int]:
     process = await asyncio.create_subprocess_exec(
         *cmd,
-        cwd="/workspace",
+        cwd=_get_channel_workdir(channel_id),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -70,7 +77,7 @@ async def call_claudecode(message: str, channel_id: int) -> str:
         session_id = str(uuid.uuid4())
         cmd = base_cmd + ["--session-id", session_id]
 
-    stdout, stderr, returncode = await _run_claude(cmd)
+    stdout, stderr, returncode = await _run_claude(cmd, channel_id)
     logger.info("claude exit=%s stdout=%s stderr=%s", returncode, stdout[:200], stderr[:200])
 
     if returncode != 0:
@@ -83,7 +90,7 @@ async def call_claudecode(message: str, channel_id: int) -> str:
             "--output-format", "json",
             "--session-id", session_id,
         ]
-        stdout, stderr, returncode = await _run_claude(retry_cmd)
+        stdout, stderr, returncode = await _run_claude(retry_cmd, channel_id)
 
     _channel_sessions[channel_id] = session_id
 
