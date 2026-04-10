@@ -197,7 +197,7 @@ class Caller:
         # 対象チャンネルなら常に反応
         if message.channel.id in self.target_channels:
             return False
-        if not message.content.startswith("!claude"):
+        if not message.content.startswith(("!claude", "!reset", "!clear", "!forget")):
             return True
         return False
 

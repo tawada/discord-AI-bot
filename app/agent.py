@@ -34,8 +34,20 @@ class AgentResponse:
     files: list[str] = field(default_factory=list)
 
 
+def reset_session(channel_id: int) -> AgentResponse:
+    """チャンネルのセッションをリセットする"""
+    removed = _channel_sessions.pop(channel_id, None)
+    if removed:
+        return AgentResponse(text="セッションをリセットしました。会話の記憶がクリアされます。")
+    return AgentResponse(text="このチャンネルにはアクティブなセッションがありません。")
+
+
 async def call(message: str, channel_id: int) -> AgentResponse:
     """Dispatch the call to the appropriate agent based on the type of the agent."""
+
+    # リセットコマンド
+    if message.strip() in ("!reset", "!clear", "!forget"):
+        return reset_session(channel_id)
 
     # ClaudeCodeのみ
     return await call_claudecode(message, channel_id)
