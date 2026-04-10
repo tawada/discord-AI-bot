@@ -1,3 +1,4 @@
+import asyncio
 import os
 import re
 
@@ -11,8 +12,13 @@ from app.agent import AgentResponse
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# チャンネルごとのロック（同一チャンネルでのclaude多重起動を防止）
+_channel_locks: dict[int, asyncio.Lock] = {}
+
 # Discordのアップロード上限 (Nitroなしで25MB)
 _MAX_FILE_SIZE = 25 * 1024 * 1024
+# Discordのメッセージ文字数上限
+_MAX_MESSAGE_LENGTH = 2000
 
 # Yes/No質問の判定パターン
 _YESNO_PATTERN = re.compile(
@@ -20,6 +26,52 @@ _YESNO_PATTERN = re.compile(
     r"|shall I|should I|do you want|would you like|yes or no|proceed\?)",
     re.IGNORECASE,
 )
+
+
+def _split_message(text: str) -> list[str]:
+    """テキストを2000文字ごとに分割する。コードブロック(```)が途中で切れる場合は閉じ/再開を補う。"""
+    chunks = []
+    while text:
+        if len(text) <= _MAX_MESSAGE_LENGTH:
+            chunks.append(text)
+            break
+        # 改行で区切れる位置を探す
+        split_at = text.rfind("\n", 0, _MAX_MESSAGE_LENGTH)
+        if split_at <= 0:
+            split_at = _MAX_MESSAGE_LENGTH
+        chunks.append(text[:split_at])
+        text = text[split_at:].lstrip("\n")
+
+    # コードブロックの開閉を補正
+    in_code_block = False
+    code_fence = ""
+    for i, chunk in enumerate(chunks):
+        patched = chunk
+        if in_code_block:
+            patched = code_fence + "\n" + patched
+        # このチャンク内の```を数えて、開閉状態を追跡
+        fence_count = 0
+        last_fence = ""
+        for line in chunk.split("\n"):
+            stripped = line.lstrip()
+            if stripped.startswith("```"):
+                fence_count += 1
+                last_fence = stripped
+        if fence_count % 2 == 1:
+            # 奇数個 = 状態反転
+            if not in_code_block:
+                in_code_block = True
+                code_fence = last_fence.split()[0] if last_fence else "```"
+                patched += "\n```"
+            else:
+                in_code_block = False
+                code_fence = ""
+        elif in_code_block:
+            # 偶数個でブロック内のまま = 閉じて開き直す
+            patched += "\n```"
+        chunks[i] = patched
+
+    return chunks
 
 
 async def _send_response(send_func, res: AgentResponse, caller: "Caller", channel_id: int):
@@ -40,20 +92,26 @@ async def _send_response(send_func, res: AgentResponse, caller: "Caller", channe
     if skipped:
         text += "\n\n⚠ アップロード上限(25MB)を超えたファイル: " + ", ".join(skipped)
 
-    kwargs = {}
-    if valid_files:
-        kwargs["files"] = valid_files
-    if _YESNO_PATTERN.search(res.text):
-        kwargs["view"] = YesNoView(caller, channel_id)
+    # テキストを2000文字ごとに分割
+    chunks = _split_message(text)
 
-    try:
-        await send_func(text, **kwargs)
-    except discord.HTTPException as e:
-        logger.error("Failed to send message: %s", e)
+    # 最後のチャンクにファイルとViewを添付
+    for i, chunk in enumerate(chunks):
+        kwargs = {}
+        is_last = i == len(chunks) - 1
+        if is_last and valid_files:
+            kwargs["files"] = valid_files
+        if is_last and _YESNO_PATTERN.search(res.text):
+            kwargs["view"] = YesNoView(caller, channel_id)
         try:
-            await send_func(f"⚠ メッセージの送信に失敗しました: {e.status} {e.text}")
-        except discord.HTTPException:
-            pass
+            await send_func(chunk, **kwargs)
+        except discord.HTTPException as e:
+            logger.error("Failed to send message: %s", e)
+            try:
+                await send_func(f"⚠ メッセージの送信に失敗しました: {e.status} {e.text}")
+            except discord.HTTPException:
+                pass
+            break
 
 
 class YesNoView(ui.View):
@@ -63,6 +121,7 @@ class YesNoView(ui.View):
         super().__init__(timeout=300)
         self.caller = caller
         self.channel_id = channel_id
+        self._handled = False
 
     @ui.button(label="Yes", style=discord.ButtonStyle.success)
     async def yes_button(self, interaction: discord.Interaction, button: ui.Button):
@@ -73,13 +132,19 @@ class YesNoView(ui.View):
         await self._handle(interaction, "No")
 
     async def _handle(self, interaction: discord.Interaction, answer: str):
+        if self._handled:
+            await interaction.response.defer()
+            return
+        self._handled = True
         self.stop()
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(view=self)
 
-        res = await self.caller.call_agent(answer, self.channel_id)
-        await _send_response(interaction.followup.send, res, self.caller, self.channel_id)
+        lock = _channel_locks.setdefault(self.channel_id, asyncio.Lock())
+        async with lock:
+            res = await self.caller.call_agent(answer, self.channel_id)
+            await _send_response(interaction.followup.send, res, self.caller, self.channel_id)
 
 
 class Caller:
@@ -119,8 +184,10 @@ class Caller:
             logger.info("ignore message: ch=%s %s: %s", message.channel.id, message.author, message.content)
             return
 
-        res = await self.call_agent(message.content, message.channel.id)
-        await _send_response(message.channel.send, res, self, message.channel.id)
+        lock = _channel_locks.setdefault(message.channel.id, asyncio.Lock())
+        async with lock:
+            res = await self.call_agent(message.content, message.channel.id)
+            await _send_response(message.channel.send, res, self, message.channel.id)
 
 
     def ignore_message(self, message: discord.Message) -> bool:
