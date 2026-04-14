@@ -190,13 +190,30 @@ class Caller:
         # --- イベントハンドラーの登録 ---
         self.client.event(self.on_ready)
         self.client.event(self.on_message)
+        self.client.event(self.on_disconnect)
+        self.client.event(self.on_resumed)
+        self.client.event(self.on_error)
 
-        self.client.run(api_key)
+        logger.info("Starting bot...")
+        self.client.run(api_key, log_handler=None)
+        logger.warning("client.run() has returned — bot has stopped")
 
 
     async def on_ready(self):
         """ボット起動時の処理"""
         logger.info("We have logged in as {0.user}".format(self.client))
+
+    async def on_disconnect(self):
+        """Gateway切断時"""
+        logger.warning("Disconnected from Discord Gateway")
+
+    async def on_resumed(self):
+        """Gateway再接続時"""
+        logger.info("Resumed Discord Gateway connection")
+
+    async def on_error(self, event: str, *args, **kwargs):
+        """イベントハンドラの未処理例外"""
+        logger.exception("Unhandled exception in event: %s", event)
 
 
     async def on_message(self, message: discord.Message):
@@ -227,8 +244,11 @@ class Caller:
 
         lock = _channel_locks.setdefault(message.channel.id, asyncio.Lock())
         async with lock:
-            res = await self.call_agent(message.content, message.channel.id)
-            await _send_response(message.channel.send, res, self, message.channel.id)
+            try:
+                res = await self.call_agent(message.content, message.channel.id)
+                await _send_response(message.channel.send, res, self, message.channel.id)
+            except Exception:
+                logger.exception("Error handling message: ch=%s %s", message.channel.id, message.content[:100])
 
 
     def ignore_message(self, message: discord.Message) -> bool:

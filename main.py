@@ -56,9 +56,19 @@ def check_pid_file():
 
 
 if __name__ == "__main__":
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    _logger = logging.getLogger(__name__)
+
     check_pid_file()
-    settings = Settings()
-    app.caller.run(
-        api_key=settings.discord_api_key,
-        target_channels=settings.get_target_channel_ids(),
-    )
+    try:
+        settings = Settings()
+        _logger.info("Bot starting with PID %s", os.getpid())
+        app.caller.run(
+            api_key=settings.discord_api_key,
+            target_channels=settings.get_target_channel_ids(),
+        )
+        _logger.warning("Bot has exited normally")
+    except Exception:
+        _logger.exception("Bot crashed with unhandled exception")
+        sys.exit(1)
