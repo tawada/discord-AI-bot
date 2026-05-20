@@ -227,12 +227,36 @@ class Caller:
             help_text = (
                 "**コマンド一覧**\n"
                 "`!claude <メッセージ>` — Claudeに質問する（対象チャンネル外で使用）\n"
+                "`!agent claude` / `!agent opencode` — エージェントの切り替え\n"
                 "`!reset` / `!clear` / `!forget` — 会話の記憶をリセット\n"
                 "`!reload` — .envからターゲットチャンネル設定を再読み込み\n"
                 "`!help` — このヘルプを表示\n"
                 "\n対象チャンネルではプレフィックスなしで会話できます。"
             )
             await message.channel.send(help_text)
+            return
+
+        # !agent: エージェントの切り替え
+        if message.content.strip().startswith("!agent"):
+            parts = message.content.strip().split()
+            if len(parts) < 2:
+                current = agent.get_agent_type(message.channel.id)
+                await message.channel.send(
+                    f"現在のエージェント: **{current}**\n"
+                    f"使い方: `!agent claude` / `!agent opencode`"
+                )
+                return
+            name = parts[1].lower()
+            aliases = {
+                "claude": "claudecode", "claudecode": "claudecode", "claude-code": "claudecode",
+                "opencode": "opencode", "open-code": "opencode", "oc": "opencode",
+            }
+            agent_type = aliases.get(name)
+            if not agent_type:
+                await message.channel.send(f"不明なエージェント: {name}\n選択肢: claude / opencode")
+                return
+            res = agent.set_agent_type(message.channel.id, agent_type)
+            await message.channel.send(res.text)
             return
 
         # !reload: .envからターゲットチャンネルを再読み込み
@@ -258,7 +282,7 @@ class Caller:
         # 対象チャンネルなら常に反応
         if message.channel.id in self.target_channels:
             return False
-        if not message.content.startswith(("!claude", "!reset", "!clear", "!forget", "!reload", "!help")):
+        if not message.content.startswith(("!claude", "!reset", "!clear", "!forget", "!reload", "!help", "!agent")):
             return True
         return False
 
