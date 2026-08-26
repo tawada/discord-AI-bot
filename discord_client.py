@@ -75,7 +75,7 @@ def check_if_channel_is_target(message: discord.Message) -> bool:
 @client.event
 async def on_ready():
     """ボット起動時の処理"""
-    logger.info("We have logged in as {0.user}".format(client))
+    logger.info("We have logged in as {0.user} (pid={1})".format(client, os.getpid()))
 
 
 @client.event
@@ -94,7 +94,7 @@ async def on_message(message: discord.Message):
         logger.info(f"duplicate message ignored: {message.id}")
         return
 
-    logger.info(f"channel_id:{message.channel.id}")
+    logger.info(f"pid:{os.getpid()} channel_id:{message.channel.id}")
     logger.info(f"name:{message.author.name}")
     logger.info(f"message:{message.content[:50]}")
 
