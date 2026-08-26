@@ -198,6 +198,8 @@ async def test_on_message_deduplicates_redelivered_message():
 
     mock_message = MagicMock()
     mock_message.author.bot = False
+    mock_message.webhook_id = None
+    mock_message.author.id = 111  # client.user (未接続時は None) とは別ID
     mock_message.id = 424242
     mock_message.content = "こんにちは"
     mock_message.channel.id = next(iter(discord_client.config.target_channel_ids))

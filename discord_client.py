@@ -63,8 +63,17 @@ def is_duplicate_message(message: discord.Message) -> bool:
 
 
 def ignore_message(message: discord.Message) -> bool:
-    """ボットのメッセージを無視"""
-    return message.author == client.user or message.author.bot
+    """ボット/Webhook/自分自身のメッセージを無視（自己返信ループの防止）"""
+    is_self = client.user is not None and message.author.id == client.user.id
+    is_bot = bool(getattr(message.author, "bot", False))
+    is_webhook = message.webhook_id is not None
+    ignore = is_self or is_bot or is_webhook
+    if ignore:
+        logger.info(
+            f"ignore_message=True self={is_self} bot={is_bot} "
+            f"webhook={is_webhook} author={message.author}"
+        )
+    return ignore
 
 
 def check_if_channel_is_target(message: discord.Message) -> bool:
