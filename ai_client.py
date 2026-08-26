@@ -17,14 +17,14 @@ class HybridAIClient:
         self.gemini_api_key = config.gemini_api_key
         self.anthropic_api_key = config.anthropic_api_key
         self.openai_models = ["gpt-4o"]
-        self.gemini_models = ["gemini-1.5-flash"]
+        self.gemini_models = ["gemini-2.5-flash"]
         self.anthropic_models = ["claude-3-sonnet-20240229"]
         self.LOG_LEN = 40
         self.llms = {}
         if self.openai_api_key:
             self.llms["openai"] = ChatOpenAI(openai_api_key=self.openai_api_key)
         if self.gemini_api_key:
-            self.llms["gemini"] = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=self.gemini_api_key)
+            self.llms["gemini"] = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=self.gemini_api_key)
         if self.anthropic_api_key:
             try:
                 self.llms["anthropic"] = ChatAnthropic(
