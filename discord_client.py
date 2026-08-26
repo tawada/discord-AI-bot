@@ -1,4 +1,5 @@
 import os
+from collections import deque
 
 import discord
 from loguru import logger
@@ -48,6 +49,18 @@ text_model = validate_model("gemini-2.5-flash")
 
 history = History()
 
+# 直近に処理したメッセージIDを保持し、Gateway再接続時のイベント再配信による
+# 二重処理（二重返信）を防ぐ。maxlenで自動的に古いIDが破棄される。
+_recent_message_ids: deque = deque(maxlen=1000)
+
+
+def is_duplicate_message(message: discord.Message) -> bool:
+    """同一メッセージが再配信された場合にTrueを返し、処理済みとして記録する"""
+    if message.id in _recent_message_ids:
+        return True
+    _recent_message_ids.append(message.id)
+    return False
+
 
 def ignore_message(message: discord.Message) -> bool:
     """ボットのメッセージを無視"""
@@ -74,6 +87,11 @@ async def on_message(message: discord.Message):
 
     if not check_if_channel_is_target(message):
         logger.info("not target channel")
+        return
+
+    # 再配信された同一メッセージは無視（二重返信の防止）
+    if is_duplicate_message(message):
+        logger.info(f"duplicate message ignored: {message.id}")
         return
 
     logger.info(f"channel_id:{message.channel.id}")

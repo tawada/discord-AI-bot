@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 from typing import Any, Dict, List
 
@@ -44,9 +45,15 @@ async def get_reply_message(
     messages.append({"role": "user", "content": f"{user_name}:\n{user_message}"})
     
     # 知識が不足していると判断された場合に検索を実行
-    if ai_client.is_knowledge_insufficient(text_model, messages) and not optional_messages:
+    # （ブロッキングなLLM/検索呼び出しはイベントループを止めないようスレッドに退避）
+    knowledge_insufficient = await asyncio.to_thread(
+        ai_client.is_knowledge_insufficient, text_model, messages
+    )
+    if knowledge_insufficient and not optional_messages:
         logger.info("LLMの知識が不足しています。外部情報を検索します。")
-        summary = search_and_summarize(user_message, ai_client, text_model)
+        summary = await asyncio.to_thread(
+            search_and_summarize, user_message, ai_client, text_model
+        )
         optional_messages.append({
             "role": "system",
             "content": f"「{user_message}」の検索結果要約:\n{summary}",
@@ -74,7 +81,8 @@ async def get_reply_message(
 async def generate_ai_response(ai_client: Any, model: str, messages: List[Dict[str, str]]) -> str:
     """AIを使用して応答を生成（LangChain経由）"""
     try:
-        response = ai_client.create(
+        response = await asyncio.to_thread(
+            ai_client.create,
             model=model,
             messages=messages,
         )
@@ -146,9 +154,13 @@ async def process_message(
     """メッセージを処理し、必要な情報を収集して返信を生成する"""
     optional_messages = []
 
+    # 各種前処理は同期的なネットワーク/LLM呼び出しを含むため、
+    # イベントループ（Discordのハートビート）を止めないようスレッドに退避する。
 
     # 添付ファイルの処理
-    optional_messages = process_message_attachments(message, ai_client, optional_messages)
+    optional_messages = await asyncio.to_thread(
+        process_message_attachments, message, ai_client, optional_messages
+    )
 
     # メッセージ中にリアルタイム情報が含まれている場合の処理
     if contains_real_time_info(message.content):
@@ -156,11 +168,15 @@ async def process_message(
 
     # メッセージ中にURLが含まれている場合の処理
     if functions.contains_url(message.content):
-        optional_messages = process_message_urls(message, ai_client, optional_messages)
+        optional_messages = await asyncio.to_thread(
+            process_message_urls, message, ai_client, optional_messages
+        )
 
     # 検索が必要な場合の処理
-    if is_search_needed(message.content, ai_client, text_model):
-        summary = search_and_summarize(message.content, ai_client, text_model)
+    if await asyncio.to_thread(is_search_needed, message.content, ai_client, text_model):
+        summary = await asyncio.to_thread(
+            search_and_summarize, message.content, ai_client, text_model
+        )
         optional_messages.append(
             {
                 "role": "system",

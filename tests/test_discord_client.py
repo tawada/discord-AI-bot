@@ -189,3 +189,36 @@ async def test_on_message_ignore_bot():
     with patch("message_handler.process_message") as mock_process:
         await discord_client.on_message(mock_message)
         mock_process.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_on_message_deduplicates_redelivered_message():
+    """同一メッセージが再配信されても1回しか処理されないことを確認（二重返信防止）"""
+    discord_client._recent_message_ids.clear()
+
+    mock_message = MagicMock()
+    mock_message.author.bot = False
+    mock_message.id = 424242
+    mock_message.content = "こんにちは"
+    mock_message.channel.id = next(iter(discord_client.config.target_channel_ids))
+    mock_message.channel.typing.return_value.__aenter__ = AsyncMock()
+    mock_message.channel.typing.return_value.__aexit__ = AsyncMock()
+
+    with patch("discord_client.process_message", new=AsyncMock(return_value="返信")) as mock_process, \
+         patch("discord_client.send_messages", new=AsyncMock()) as mock_send:
+        # 同じメッセージを2回受信（Gateway再配信を模擬）
+        await discord_client.on_message(mock_message)
+        await discord_client.on_message(mock_message)
+
+    # 2回受信しても処理・送信は各1回のみ
+    assert mock_process.call_count == 1
+    assert mock_send.call_count == 1
+
+
+def test_is_duplicate_message():
+    """is_duplicate_message は初回False・2回目Trueを返す"""
+    discord_client._recent_message_ids.clear()
+    msg = MagicMock()
+    msg.id = 999
+    assert discord_client.is_duplicate_message(msg) is False
+    assert discord_client.is_duplicate_message(msg) is True
