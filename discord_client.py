@@ -81,6 +81,12 @@ async def on_ready():
 @client.event
 async def on_message(message: discord.Message):
     """メッセージ受信時の処理"""
+    # 二重返信の切り分け用: 受信した全メッセージのIDとPIDを最初に記録
+    logger.info(
+        f"on_message ENTER pid={os.getpid()} id={message.id} "
+        f"author={message.author} content={message.content[:20]!r}"
+    )
+
     if ignore_message(message):
         logger.info("ignore message")
         return
@@ -104,6 +110,10 @@ async def on_message(message: discord.Message):
         )
 
     if bot_reply_message:
+        logger.info(
+            f"on_message SEND pid={os.getpid()} id={message.id} "
+            f"reply={bot_reply_message[:30]!r}"
+        )
         await send_messages(message.channel, bot_reply_message)
 
 
