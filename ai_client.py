@@ -55,6 +55,13 @@ class HybridAIClient:
     def create(self, model: str, messages: List[Dict[str, str]], **kwargs) -> Any:
         try:
             llm, provider = self._select_llm(model)
+            # Geminiは assistant(model) ターンで終わるリクエストを拒否する
+            # (400 Requests ending with a model turn are not supported)。
+            # 応答を促すための末尾assistantメッセージ（priming）を取り除く。
+            if provider == "gemini":
+                messages = list(messages)
+                while messages and messages[-1].get("role") == "assistant":
+                    messages.pop()
             for message in messages:
                 log_msg = message.get("content", "")
                 if isinstance(log_msg, str):
