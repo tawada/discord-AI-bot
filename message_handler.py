@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import os
 from typing import Any, Dict, List
 
 import discord
@@ -203,7 +204,12 @@ async def send_messages(channel: discord.TextChannel, message: str) -> None:
     short_messages.append(message)
 
     for short_message in short_messages:
-        await channel.send(short_message)
+        sent = await channel.send(short_message)
+        # このプロセスが実際に送信したメッセージのIDを記録（送信元の切り分け用）
+        logger.info(
+            f"channel.send DONE pid={os.getpid()} sent_id={getattr(sent, 'id', None)} "
+            f"content={short_message[:30]!r}"
+        )
 
 
 def contains_real_time_info(message: str) -> bool:
